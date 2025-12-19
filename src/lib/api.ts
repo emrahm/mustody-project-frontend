@@ -1,57 +1,53 @@
-import axios from 'axios'
+import axios from 'axios';
 
-// API client
+// Backend API base URL
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+
+// Create axios instance
 export const api = axios.create({
-  baseURL: '/api/v1',
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
-})
+});
 
-// Token'ı her istekte ekle
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token')
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
+// Request interceptor to add auth token
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
   }
-  return config
-})
+);
 
-// 401 hatalarında login'e yönlendir
+// Response interceptor for error handling
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
-      window.location.href = '/login'
+      localStorage.removeItem('auth_token');
+      window.location.href = '/login';
     }
-    return Promise.reject(error)
+    return Promise.reject(error);
   }
-)
+);
 
-// Auth API
+// Auth API endpoints
 export const authAPI = {
-  me: () => api.get('/auth/me'),
-  
   login: (email: string, password: string) =>
     api.post('/auth/login', { email, password }),
   
-  register: (data: { name: string; email: string; password: string; org_name: string }) =>
-    api.post('/auth/register', data),
-  
-  socialLogin: (data: { provider: string; provider_id: string; email: string; name?: string; avatar_url?: string }) =>
-    api.post('/auth/social-login', data),
+  register: (email: string, password: string, name: string) =>
+    api.post('/auth/register', { email, password, name }),
   
   logout: () => api.post('/auth/logout'),
-}
+  
+  me: () => api.get('/auth/me'),
+};
 
-// API Keys API
-export const apiKeysAPI = {
-  list: () => api.get('/keys'),
-  
-  create: (data: { name: string; app_type: string; auth_type: string }) =>
-    api.post('/keys', data),
-  
-  revoke: (id: number) => api.delete(`/keys/${id}`),
-}
+export default api;

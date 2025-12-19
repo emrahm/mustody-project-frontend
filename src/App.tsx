@@ -7,12 +7,15 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import LandingPage from "./pages/LandingPage";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import Dashboard from "./pages/Dashboard";
+import ApiKeyManagement from "./pages/ApiKeyManagement";
 import AdminDashboard from "./pages/AdminDashboard";
 import TenantAdminDashboard from "./pages/TenantAdminDashboard";
 import TenantUserDashboard from "./pages/TenantUserDashboard";
 import PaymentLinksManagement from "./pages/PaymentLinksManagement";
 import CreatePaymentLink from "./pages/CreatePaymentLink";
 import PublicPaymentLink from "./pages/PublicPaymentLink";
+import { Homepage } from "./pages/Homepage";
 import { useAuth } from "@/_core/hooks/useAuth";
 
 function Router() {
@@ -27,10 +30,9 @@ function Router() {
   }
 
   const getDashboard = () => {
-    if (!user) return LandingPage;
-    // Backend'den gelen user role'üne göre dashboard seç
-    // Şimdilik basit bir dashboard döndür
-    return TenantUserDashboard;
+    if (!user) return Homepage;
+    // Use our new Dashboard component as the main dashboard
+    return Dashboard;
   };
 
   const DashboardComponent = getDashboard();
@@ -40,7 +42,8 @@ function Router() {
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
       <Route path="/" component={DashboardComponent} />
-      <Route path="/dashboard" component={DashboardComponent} />
+      <Route path="/dashboard" component={Dashboard} />
+      <Route path="/api-keys" component={ApiKeyManagement} />
       <Route path="/admin" component={AdminDashboard} />
       <Route path="/payment-links" component={PaymentLinksManagement} />
       <Route path="/create-payment-link" component={CreatePaymentLink} />
