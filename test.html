@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mustody Registration Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+        button { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .error { color: red; margin-top: 10px; }
+        .success { color: green; margin-top: 10px; }
+        .oauth-btn { background: #4285f4; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>Mustody Registration Test</h1>
+    
+    <div id="message"></div>
+    
+    <button class="oauth-btn" onclick="handleGoogleAuth()">Continue with Google</button>
+    
+    <hr>
+    
+    <form id="registerForm">
+        <div class="form-group">
+            <label for="name">Full Name:</label>
+            <input type="text" id="name" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="email">Email:</label>
+            <input type="email" id="email" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="password">Password:</label>
+            <input type="password" id="password" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="orgName">Organization Name:</label>
+            <input type="text" id="orgName" required>
+        </div>
+        
+        <button type="submit">Register</button>
+    </form>
+    
+    <hr>
+    
+    <form id="loginForm">
+        <h3>Login Test</h3>
+        <div class="form-group">
+            <label for="loginEmail">Email:</label>
+            <input type="email" id="loginEmail" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="loginPassword">Password:</label>
+            <input type="password" id="loginPassword" required>
+        </div>
+        
+        <button type="submit">Login</button>
+    </form>
+
+    <script>
+        const API_BASE = 'http://localhost:8080/api/v1';
+        
+        // Registration
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = {
+                name: document.getElementById('name').value,
+                email: document.getElementById('email').value,
+                password: document.getElementById('password').value,
+                org_name: document.getElementById('orgName').value
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE}/register/admin`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('message').innerHTML = 
+                        `<div class="success">Registration successful! User ID: ${result.user_id}</div>`;
+                    document.getElementById('registerForm').reset();
+                } else {
+                    document.getElementById('message').innerHTML = 
+                        `<div class="error">Registration failed: ${result.error}</div>`;
+                }
+            } catch (error) {
+                document.getElementById('message').innerHTML = 
+                    `<div class="error">Network error: ${error.message}</div>`;
+            }
+        });
+        
+        // Login
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = {
+                email: document.getElementById('loginEmail').value,
+                password: document.getElementById('loginPassword').value
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE}/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    localStorage.setItem('auth_token', result.token);
+                    document.getElementById('message').innerHTML = 
+                        `<div class="success">Login successful! Token saved. User: ${result.user.name}</div>`;
+                    document.getElementById('loginForm').reset();
+                } else {
+                    document.getElementById('message').innerHTML = 
+                        `<div class="error">Login failed: ${result.error}</div>`;
+                }
+            } catch (error) {
+                document.getElementById('message').innerHTML = 
+                    `<div class="error">Network error: ${error.message}</div>`;
+            }
+        });
+        
+        // Google OAuth
+        function handleGoogleAuth() {
+            const clientId = 'your_google_client_id_here'; // Replace with actual client ID
+            const redirectUri = 'http://localhost:8000/auth/callback';
+            
+            if (clientId === 'your_google_client_id_here') {
+                alert('Google OAuth is not configured. Please set VITE_GOOGLE_CLIENT_ID in .env file');
+                return;
+            }
+            
+            const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+                `client_id=${clientId}&` +
+                `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+                `response_type=code&` +
+                `scope=email profile&` +
+                `state=register`;
+            
+            window.location.href = googleAuthUrl;
+        }
+    </script>
+</body>
+</html>

@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Backend API base URL
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1';
 
 // Create axios instance
 export const api = axios.create({
@@ -40,14 +40,32 @@ api.interceptors.response.use(
 // Auth API endpoints
 export const authAPI = {
   login: (email: string, password: string) =>
-    api.post('/auth/login', { email, password }),
+    api.post('/login', { email, password }),
   
-  register: (email: string, password: string, name: string) =>
-    api.post('/auth/register', { email, password, name }),
+  adminLogin: (email: string, password: string) =>
+    api.post('/admin/login', { email, password }),
   
-  logout: () => api.post('/auth/logout'),
+  registerAdmin: (name: string, email: string, password: string, org_name: string) =>
+    api.post('/register/admin', { name, email, password, org_name }),
   
-  me: () => api.get('/auth/me'),
+  socialLogin: (provider: string, provider_id: string, email: string, name?: string, avatar_url?: string) =>
+    api.post('/login/social', { provider, provider_id, email, name, avatar_url }),
+  
+  verifyEmail: (token: string) =>
+    api.post('/verify-email', { token }),
+  
+  resendVerification: (email: string) =>
+    api.post('/resend-verification', { email }),
+  
+  enable2FA: () =>
+    api.post('/2fa/enable'),
+  
+  verify2FA: (code: string) =>
+    api.post('/2fa/verify', { code }),
+  
+  logout: () => api.post('/logout'),
+  
+  me: () => api.get('/me'),
 };
 
 export default api;

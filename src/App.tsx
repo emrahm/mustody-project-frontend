@@ -5,18 +5,26 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import LandingPage from "./pages/LandingPage";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import Dashboard from "./pages/Dashboard";
-import ApiKeyManagement from "./pages/ApiKeyManagement";
+import LoginMUI from "./pages/LoginMUI";
+import RegisterMUI from "./pages/RegisterMUI";
+import DashboardMUI from "./pages/DashboardMUI";
+import VerifyEmail from "./pages/VerifyEmail";
+import ApiKeysManagementMUI from "./pages/ApiKeysManagementMUI";
+import AdminLogin from "./pages/AdminLogin";
+import CompanyManagement from "./pages/CompanyManagement";
+import UserManagement from "./pages/UserManagement";
 import AdminDashboard from "./pages/AdminDashboard";
 import TenantAdminDashboard from "./pages/TenantAdminDashboard";
 import TenantUserDashboard from "./pages/TenantUserDashboard";
 import PaymentLinksManagement from "./pages/PaymentLinksManagement";
 import CreatePaymentLink from "./pages/CreatePaymentLink";
 import PublicPaymentLink from "./pages/PublicPaymentLink";
+import AuthCallback from "./pages/AuthCallback";
 import { Homepage } from "./pages/Homepage";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
+import { theme } from './theme/theme';
 
 function Router() {
   const { user, loading } = useAuth();
@@ -31,20 +39,28 @@ function Router() {
 
   const getDashboard = () => {
     if (!user) return Homepage;
-    // Use our new Dashboard component as the main dashboard
-    return Dashboard;
+    return DashboardMUI;
   };
 
   const DashboardComponent = getDashboard();
 
   return (
     <Switch>
-      <Route path="/login" component={Login} />
-      <Route path="/register" component={Register} />
+      <Route path="/login" component={LoginMUI} />
+      <Route path="/register" component={RegisterMUI} />
+      <Route path="/verify-email" component={VerifyEmail} />
+      <Route path="/auth/callback" component={AuthCallback} />
+      
+      {/* Admin Routes */}
+      <Route path="/admin/login" component={AdminLogin} />
+      <Route path="/admin/companies" component={CompanyManagement} />
+      <Route path="/admin/users" component={UserManagement} />
+      <Route path="/admin/dashboard" component={AdminDashboard} />
+      
+      {/* User Routes */}
       <Route path="/" component={DashboardComponent} />
-      <Route path="/dashboard" component={Dashboard} />
-      <Route path="/api-keys" component={ApiKeyManagement} />
-      <Route path="/admin" component={AdminDashboard} />
+      <Route path="/dashboard" component={DashboardMUI} />
+      <Route path="/api-keys" component={ApiKeysManagementMUI} />
       <Route path="/payment-links" component={PaymentLinksManagement} />
       <Route path="/create-payment-link" component={CreatePaymentLink} />
       <Route path="/pay/:slug" component={PublicPaymentLink} />
@@ -57,12 +73,15 @@ function Router() {
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="light">
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
-      </ThemeProvider>
+      <MuiThemeProvider theme={theme}>
+        <CssBaseline />
+        <ThemeProvider defaultTheme="light">
+          <TooltipProvider>
+            <Toaster />
+            <Router />
+          </TooltipProvider>
+        </ThemeProvider>
+      </MuiThemeProvider>
     </ErrorBoundary>
   );
 }
