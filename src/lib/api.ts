@@ -48,6 +48,9 @@ export const authAPI = {
   registerAdmin: (name: string, email: string, password: string, org_name: string) =>
     api.post('/register/admin', { name, email, password, org_name }),
   
+  registerUser: (name: string, email: string, password: string) =>
+    api.post('/register', { name, email, password }),
+  
   socialLogin: (provider: string, provider_id: string, email: string, name?: string, avatar_url?: string) =>
     api.post('/login/social', { provider, provider_id, email, name, avatar_url }),
   
@@ -66,6 +69,21 @@ export const authAPI = {
   logout: () => api.post('/logout'),
   
   me: () => api.get('/me'),
+};
+
+// Tenant API endpoints
+export const tenantAPI = {
+  requestTenant: (name: string, email: string, company: string, purpose: string) =>
+    api.post('/tenant-request', { name, email, company, purpose }),
+  
+  sendInvitation: (email: string, role: string) =>
+    api.post('/invitations', { email, role }),
+  
+  getInvitation: (token: string) =>
+    api.get(`/invitation/${token}`),
+  
+  acceptInvitation: (token: string, name: string, password: string) =>
+    api.post('/invitation/accept', { token, name, password }),
 };
 
 export default api;

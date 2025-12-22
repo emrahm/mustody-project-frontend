@@ -20,6 +20,9 @@ import PaymentLinksManagement from "./pages/PaymentLinksManagement";
 import CreatePaymentLink from "./pages/CreatePaymentLink";
 import PublicPaymentLink from "./pages/PublicPaymentLink";
 import AuthCallback from "./pages/AuthCallback";
+import TenantRequest from "./pages/TenantRequest";
+import InvitationRegister from "./pages/InvitationRegister";
+import AuditLogs from "./pages/AuditLogs";
 import { Homepage } from "./pages/Homepage";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
@@ -48,6 +51,8 @@ function Router() {
     <Switch>
       <Route path="/login" component={LoginMUI} />
       <Route path="/register" component={RegisterMUI} />
+      <Route path="/tenant-request" component={TenantRequest} />
+      <Route path="/invitation/:token" component={InvitationRegister} />
       <Route path="/verify-email" component={VerifyEmail} />
       <Route path="/auth/callback" component={AuthCallback} />
       
@@ -61,6 +66,7 @@ function Router() {
       <Route path="/" component={DashboardComponent} />
       <Route path="/dashboard" component={DashboardMUI} />
       <Route path="/api-keys" component={ApiKeysManagementMUI} />
+      <Route path="/audit-logs" component={AuditLogs} />
       <Route path="/payment-links" component={PaymentLinksManagement} />
       <Route path="/create-payment-link" component={CreatePaymentLink} />
       <Route path="/pay/:slug" component={PublicPaymentLink} />
