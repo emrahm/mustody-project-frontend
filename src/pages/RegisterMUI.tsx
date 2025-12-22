@@ -10,10 +10,6 @@ import {
   Divider,
   IconButton,
   InputAdornment,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   Checkbox,
   FormControlLabel,
   Link as MuiLink,
@@ -22,7 +18,6 @@ import {
   Visibility,
   VisibilityOff,
   Google,
-  Business,
   Email,
   Person,
 } from '@mui/icons-material';
@@ -36,8 +31,6 @@ const schema = yup.object({
   firstName: yup.string().required('First name is required'),
   lastName: yup.string().required('Last name is required'),
   email: yup.string().email('Invalid email').required('Email is required'),
-  company: yup.string().required('Company name is required'),
-  role: yup.string().required('Role is required'),
   password: yup
     .string()
     .min(8, 'Password must be at least 8 characters')
@@ -49,18 +42,18 @@ const schema = yup.object({
   confirmPassword: yup
     .string()
     .oneOf([yup.ref('password')], 'Passwords must match')
-    .required('Confirm password is required'),
-  acceptTerms: yup.boolean().oneOf([true], 'You must accept the terms'),
+    .required('Please confirm your password'),
+  agreeToTerms: yup.boolean().oneOf([true], 'You must agree to the terms'),
 });
 
 type FormData = yup.InferType<typeof schema>;
 
-export default function Register() {
+export default function RegisterMUI() {
   const [, setLocation] = useLocation();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const {
     control,
@@ -72,11 +65,9 @@ export default function Register() {
       firstName: '',
       lastName: '',
       email: '',
-      company: '',
-      role: '',
       password: '',
       confirmPassword: '',
-      acceptTerms: false,
+      agreeToTerms: false,
     },
   });
 
@@ -87,15 +78,14 @@ export default function Register() {
     try {
       const name = `${data.firstName} ${data.lastName}`.trim();
       
-      const response = await authAPI.registerAdmin(
+      const response = await authAPI.registerUser(
         name,
         data.email,
-        data.password,
-        data.company
+        data.password
       );
-      
+
       console.log('Registration successful:', response.data);
-      setLocation('/verify-email?email=' + encodeURIComponent(data.email));
+      setLocation('/login?message=Registration successful! Please login.');
     } catch (error: any) {
       console.error('Registration error:', error);
       setError(error.response?.data?.error || 'Registration failed. Please try again.');
@@ -134,23 +124,37 @@ export default function Register() {
         p: 2,
       }}
     >
-      <Card sx={{ maxWidth: 500, width: '100%' }}>
+      <Card
+        sx={{
+          maxWidth: 480,
+          width: '100%',
+          boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
+          borderRadius: 3,
+        }}
+      >
         <CardContent sx={{ p: 4 }}>
           <Box textAlign="center" mb={4}>
-            <Typography variant="h3" color="primary" gutterBottom>
+            <Typography
+              variant="h3"
+              component="h1"
+              sx={{
+                fontWeight: 'bold',
+                background: 'linear-gradient(45deg, #667eea, #764ba2)',
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                mb: 1,
+              }}
+            >
               Mustody
             </Typography>
+            <Typography variant="h5" component="h2" gutterBottom>
+              Create Account
+            </Typography>
             <Typography variant="body2" color="text.secondary">
-              Enterprise Crypto Custody Platform
+              Join the future of digital asset custody
             </Typography>
           </Box>
-
-          <Typography variant="h4" textAlign="center" mb={1}>
-            Create Account
-          </Typography>
-          <Typography variant="body2" color="text.secondary" textAlign="center" mb={3}>
-            Join the future of digital asset custody
-          </Typography>
 
           {error && (
             <Alert severity="error" sx={{ mb: 3 }}>
@@ -163,7 +167,7 @@ export default function Register() {
             variant="outlined"
             startIcon={<Google />}
             onClick={handleGoogleSignIn}
-            sx={{ mb: 3 }}
+            sx={{ mb: 3, py: 1.5 }}
           >
             Continue with Google
           </Button>
@@ -174,16 +178,16 @@ export default function Register() {
             </Typography>
           </Divider>
 
-          <form onSubmit={handleSubmit(onSubmit)}>
-            <Box display="flex" gap={2} mb={3}>
+          <Box component="form" onSubmit={handleSubmit(onSubmit)} noValidate>
+            <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
               <Controller
                 name="firstName"
                 control={control}
                 render={({ field }) => (
                   <TextField
                     {...field}
-                    label="First Name"
                     fullWidth
+                    label="First Name"
                     error={!!errors.firstName}
                     helperText={errors.firstName?.message}
                     InputProps={{
@@ -202,8 +206,8 @@ export default function Register() {
                 render={({ field }) => (
                   <TextField
                     {...field}
-                    label="Last Name"
                     fullWidth
+                    label="Last Name"
                     error={!!errors.lastName}
                     helperText={errors.lastName?.message}
                   />
@@ -217,12 +221,12 @@ export default function Register() {
               render={({ field }) => (
                 <TextField
                   {...field}
+                  fullWidth
                   label="Email Address"
                   type="email"
-                  fullWidth
-                  sx={{ mb: 3 }}
                   error={!!errors.email}
                   helperText={errors.email?.message}
+                  sx={{ mb: 3 }}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
@@ -235,62 +239,17 @@ export default function Register() {
             />
 
             <Controller
-              name="company"
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  label="Company Name"
-                  fullWidth
-                  sx={{ mb: 3 }}
-                  error={!!errors.company}
-                  helperText={errors.company?.message}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Business />
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-              )}
-            />
-
-            <Controller
-              name="role"
-              control={control}
-              render={({ field }) => (
-                <FormControl fullWidth sx={{ mb: 3 }} error={!!errors.role}>
-                  <InputLabel>Role</InputLabel>
-                  <Select {...field} label="Role">
-                    <MenuItem value="ceo">CEO/Founder</MenuItem>
-                    <MenuItem value="cto">CTO</MenuItem>
-                    <MenuItem value="developer">Developer</MenuItem>
-                    <MenuItem value="finance">Finance</MenuItem>
-                    <MenuItem value="operations">Operations</MenuItem>
-                    <MenuItem value="other">Other</MenuItem>
-                  </Select>
-                  {errors.role && (
-                    <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 2 }}>
-                      {errors.role.message}
-                    </Typography>
-                  )}
-                </FormControl>
-              )}
-            />
-
-            <Controller
               name="password"
               control={control}
               render={({ field }) => (
                 <TextField
                   {...field}
+                  fullWidth
                   label="Password"
                   type={showPassword ? 'text' : 'password'}
-                  fullWidth
-                  sx={{ mb: 3 }}
                   error={!!errors.password}
                   helperText={errors.password?.message}
+                  sx={{ mb: 3 }}
                   InputProps={{
                     endAdornment: (
                       <InputAdornment position="end">
@@ -313,12 +272,12 @@ export default function Register() {
               render={({ field }) => (
                 <TextField
                   {...field}
+                  fullWidth
                   label="Confirm Password"
                   type={showConfirmPassword ? 'text' : 'password'}
-                  fullWidth
-                  sx={{ mb: 3 }}
                   error={!!errors.confirmPassword}
                   helperText={errors.confirmPassword?.message}
+                  sx={{ mb: 3 }}
                   InputProps={{
                     endAdornment: (
                       <InputAdornment position="end">
@@ -336,11 +295,17 @@ export default function Register() {
             />
 
             <Controller
-              name="acceptTerms"
+              name="agreeToTerms"
               control={control}
               render={({ field }) => (
                 <FormControlLabel
-                  control={<Checkbox {...field} checked={field.value} />}
+                  control={
+                    <Checkbox
+                      {...field}
+                      checked={field.value}
+                      color="primary"
+                    />
+                  }
                   label={
                     <Typography variant="body2">
                       I agree to the{' '}
@@ -357,9 +322,9 @@ export default function Register() {
                 />
               )}
             />
-            {errors.acceptTerms && (
-              <Typography variant="caption" color="error" sx={{ display: 'block', mb: 2 }}>
-                {errors.acceptTerms.message}
+            {errors.agreeToTerms && (
+              <Typography variant="body2" color="error" sx={{ mb: 2 }}>
+                {errors.agreeToTerms.message}
               </Typography>
             )}
 
@@ -369,22 +334,32 @@ export default function Register() {
               variant="contained"
               size="large"
               disabled={loading}
-              sx={{ mb: 3 }}
+              sx={{
+                py: 1.5,
+                background: 'linear-gradient(45deg, #667eea, #764ba2)',
+                '&:hover': {
+                  background: 'linear-gradient(45deg, #5a6fd8, #6a4190)',
+                },
+              }}
             >
               {loading ? 'Creating Account...' : 'Create Account'}
             </Button>
-          </form>
+          </Box>
 
-          <Typography variant="body2" textAlign="center" color="text.secondary">
-            Already have an account?{' '}
-            <MuiLink
-              component="button"
-              onClick={() => setLocation('/login')}
-              color="primary"
-            >
-              Sign in
-            </MuiLink>
-          </Typography>
+          <Box textAlign="center" mt={3}>
+            <Typography variant="body2" color="text.secondary">
+              Already have an account?{' '}
+              <MuiLink href="/login" color="primary" sx={{ fontWeight: 'medium' }}>
+                Sign in
+              </MuiLink>
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              Need a tenant account for API key management?{' '}
+              <MuiLink href="/tenant-request" color="primary" sx={{ fontWeight: 'medium' }}>
+                Apply here
+              </MuiLink>
+            </Typography>
+          </Box>
         </CardContent>
       </Card>
     </Box>
