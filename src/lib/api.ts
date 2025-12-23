@@ -31,7 +31,10 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('auth_token');
-      window.location.href = '/login';
+      // Don't redirect if on verify-email page
+      if (window.location.pathname !== '/verify-email') {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

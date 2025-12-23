@@ -24,10 +24,27 @@ export default function VerifyEmail() {
     const token = urlParams.get('token');
     const emailParam = urlParams.get('email');
 
+    // Clear any existing auth token to prevent 401 redirects
+    if (emailParam) {
+      localStorage.removeItem('auth_token');
+    }
+
     if (emailParam) {
       setEmail(emailParam);
-      setStatus('required'); // Set status to required when email is provided
-      return; // Don't continue to token verification
+      setStatus('required');
+      
+      // Prevent navigation back to login when email verification is required
+      const handlePopState = (event: PopStateEvent) => {
+        event.preventDefault();
+        window.history.pushState(null, '', window.location.href);
+      };
+      
+      window.history.pushState(null, '', window.location.href);
+      window.addEventListener('popstate', handlePopState);
+      
+      return () => {
+        window.removeEventListener('popstate', handlePopState);
+      };
     }
 
     if (token) {
@@ -40,11 +57,6 @@ export default function VerifyEmail() {
       await authAPI.verifyEmail(token);
       setStatus('success');
       setMessage('Your email has been successfully verified!');
-      
-      // Redirect to login after 3 seconds
-      setTimeout(() => {
-        setLocation('/login?verified=true');
-      }, 3000);
     } catch (error: any) {
       setStatus('error');
       setMessage(error.response?.data?.error || 'Email verification failed.');
@@ -120,6 +132,10 @@ export default function VerifyEmail() {
                 >
                   {loading ? 'Sending...' : 'Resend Verification Email'}
                 </Button>
+                
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                  You must verify your email before you can access your account.
+                </Typography>
               </Box>
             </>
           )}

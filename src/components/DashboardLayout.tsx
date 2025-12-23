@@ -47,6 +47,7 @@ interface DashboardLayoutProps {
 const menuItems = [
   { text: 'Overview', icon: <Home />, path: '/dashboard', category: 'main' },
   { text: 'Analytics', icon: <Analytics />, path: '/analytics', category: 'main' },
+  { text: 'Messaging', icon: <Notifications />, path: '/messaging', category: 'main' },
   { text: 'Security Center', icon: <Security />, path: '/security', category: 'security' },
   { text: 'API Management', icon: <Key />, path: '/api-keys', category: 'security' },
   { text: 'Team Members', icon: <People />, path: '/team', category: 'management' },

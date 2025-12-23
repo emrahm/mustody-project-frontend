@@ -14,7 +14,13 @@ export function useAuth() {
   const [error, setError] = useState<Error | null>(null)
 
   const fetchUser = useCallback(async () => {
-    const token = localStorage.getItem('token')
+    // Skip auth check on verify-email page with email parameter
+    if (window.location.pathname === '/verify-email' && new URLSearchParams(window.location.search).get('email')) {
+      setLoading(false)
+      return
+    }
+
+    const token = localStorage.getItem('auth_token')
     if (!token) {
       setLoading(false)
       return
@@ -27,7 +33,7 @@ export function useAuth() {
     } catch (err: any) {
       setUser(null)
       setError(err)
-      localStorage.removeItem('token')
+      localStorage.removeItem('auth_token')
       localStorage.removeItem('user')
     } finally {
       setLoading(false)
@@ -44,7 +50,7 @@ export function useAuth() {
     } catch (error) {
       console.error('Logout error:', error)
     } finally {
-      localStorage.removeItem('token')
+      localStorage.removeItem('auth_token')
       localStorage.removeItem('user')
       setUser(null)
       window.location.href = '/login'

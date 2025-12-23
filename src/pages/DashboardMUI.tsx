@@ -25,6 +25,8 @@ import {
   ArrowDownward,
 } from '@mui/icons-material';
 import DashboardLayout from '@/components/DashboardLayout';
+import MessagingWidget from '@/components/MessagingWidget';
+import QuickSendMessage from '@/components/QuickSendMessage';
 
 const StatCard = ({ title, value, change, icon, color = 'primary' }: any) => {
   const theme = useTheme();
@@ -194,7 +196,7 @@ export default function DashboardContent() {
 
         <Grid container spacing={3}>
           {/* Security Overview */}
-          <Grid item xs={12} lg={8}>
+          <Grid item xs={12} lg={6}>
             <Card>
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
@@ -238,8 +240,13 @@ export default function DashboardContent() {
             </Card>
           </Grid>
 
+          {/* Messaging Widget */}
+          <Grid item xs={12} lg={6}>
+            <MessagingWidget />
+          </Grid>
+
           {/* Recent Activity */}
-          <Grid item xs={12} lg={4}>
+          <Grid item xs={12}>
             <Card>
               <CardContent>
                 <Typography variant="h6" fontWeight="600" gutterBottom>
@@ -296,7 +303,7 @@ export default function DashboardContent() {
 
         {/* Quick Actions */}
         <Grid container spacing={3} sx={{ mt: 2 }}>
-          <Grid item xs={12}>
+          <Grid item xs={12} md={8}>
             <Card>
               <CardContent>
                 <Typography variant="h6" fontWeight="600" gutterBottom>
@@ -346,6 +353,10 @@ export default function DashboardContent() {
                 </Grid>
               </CardContent>
             </Card>
+          </Grid>
+          
+          <Grid item xs={12} md={4}>
+            <QuickSendMessage />
           </Grid>
         </Grid>
       </Box>

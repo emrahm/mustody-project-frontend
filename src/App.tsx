@@ -23,6 +23,7 @@ import AuthCallback from "./pages/AuthCallback";
 import TenantRequest from "./pages/TenantRequest";
 import InvitationRegister from "./pages/InvitationRegister";
 import AuditLogs from "./pages/AuditLogs";
+import MessagingPage from "./pages/MessagingPage";
 import { Homepage } from "./pages/Homepage";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
@@ -67,6 +68,7 @@ function Router() {
       <Route path="/dashboard" component={DashboardMUI} />
       <Route path="/api-keys" component={ApiKeysManagementMUI} />
       <Route path="/audit-logs" component={AuditLogs} />
+      <Route path="/messaging" component={MessagingPage} />
       <Route path="/payment-links" component={PaymentLinksManagement} />
       <Route path="/create-payment-link" component={CreatePaymentLink} />
       <Route path="/pay/:slug" component={PublicPaymentLink} />
