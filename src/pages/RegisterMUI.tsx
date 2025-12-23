@@ -55,21 +55,21 @@ export default function RegisterMUI() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const {
-    control,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<FormData>({
-    resolver: yupResolver(schema),
-    defaultValues: {
-      firstName: '',
-      lastName: '',
-      email: '',
-      password: '',
-      confirmPassword: '',
-      agreeToTerms: false,
-    },
-  });
+const {
+  control,
+  handleSubmit,
+  formState: { errors },
+} = useForm<FormData>({
+  resolver: yupResolver(schema),
+  defaultValues: {
+    firstName: '',
+    lastName: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    agreeToTerms: false,
+  },
+});
 
   const onSubmit = async (data: FormData) => {
     setLoading(true);
