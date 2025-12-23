@@ -35,6 +35,8 @@ export default function AdminLogin() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [emailVerificationNeeded, setEmailVerificationNeeded] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
 
   const {
     control,
@@ -51,6 +53,7 @@ export default function AdminLogin() {
   const onSubmit = async (data: FormData) => {
     setLoading(true);
     setError('');
+    setEmailVerificationNeeded(false);
 
     try {
       const response = await authAPI.adminLogin(data.email, data.password);
@@ -63,7 +66,31 @@ export default function AdminLogin() {
       setLocation('/admin/dashboard');
     } catch (error: any) {
       console.error('Admin login error:', error);
-      setError(error.response?.data?.error || 'Invalid admin credentials.');
+      
+      const errorMessage = error.response?.data?.error || 'Invalid admin credentials.';
+      
+      // Check if error is related to email verification
+      if (errorMessage.includes('email not verified') || errorMessage.includes('verify your email')) {
+        // Redirect to verification page instead of showing alert
+        setLocation(`/verify-email?email=${encodeURIComponent(data.email)}`);
+        return;
+      } else {
+        setError(errorMessage);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (!userEmail) return;
+    
+    setLoading(true);
+    try {
+      await authAPI.resendVerification(userEmail);
+      setError('Verification email sent! Please check your inbox and spam folder.');
+    } catch (error: any) {
+      setError(error.response?.data?.error || 'Failed to send verification email. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -113,7 +140,22 @@ export default function AdminLogin() {
           </Box>
 
           {error && (
-            <Alert severity="error" sx={{ mb: 3 }}>
+            <Alert 
+              severity={emailVerificationNeeded ? "warning" : "error"} 
+              sx={{ mb: 3 }}
+              action={
+                emailVerificationNeeded && (
+                  <Button 
+                    color="inherit" 
+                    size="small" 
+                    onClick={handleResendVerification}
+                    disabled={loading}
+                  >
+                    Resend Email
+                  </Button>
+                )
+              }
+            >
               {error}
             </Alert>
           )}

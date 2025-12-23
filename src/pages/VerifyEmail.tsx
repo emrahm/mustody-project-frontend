@@ -14,9 +14,10 @@ import { authAPI } from '@/lib/api';
 
 export default function VerifyEmail() {
   const [, setLocation] = useLocation();
-  const [status, setStatus] = useState<'pending' | 'success' | 'error'>('pending');
+  const [status, setStatus] = useState<'pending' | 'success' | 'error' | 'required'>('pending');
   const [message, setMessage] = useState('');
   const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -25,6 +26,8 @@ export default function VerifyEmail() {
 
     if (emailParam) {
       setEmail(emailParam);
+      setStatus('required'); // Set status to required when email is provided
+      return; // Don't continue to token verification
     }
 
     if (token) {
@@ -51,11 +54,14 @@ export default function VerifyEmail() {
   const resendVerification = async () => {
     if (!email) return;
     
+    setLoading(true);
     try {
       await authAPI.resendVerification(email);
-      setMessage('Verification email sent! Please check your inbox.');
+      setMessage('Verification email sent successfully! Please check your inbox and spam folder.');
     } catch (error: any) {
       setMessage(error.response?.data?.error || 'Failed to resend verification email.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -80,6 +86,43 @@ export default function VerifyEmail() {
               Enterprise Crypto Custody Platform
             </Typography>
           </Box>
+
+          {status === 'required' && (
+            <>
+              <Email sx={{ fontSize: 64, color: 'primary.main', mb: 2 }} />
+              <Typography variant="h4" gutterBottom>
+                Verify Your Email
+              </Typography>
+              <Typography variant="body1" color="text.secondary" paragraph>
+                We've sent a verification email to:
+              </Typography>
+              <Typography variant="h6" color="primary" sx={{ mb: 2 }}>
+                {email}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" paragraph>
+                Please check your email and click the verification link to activate your account.
+                If you don't see the email, check your spam folder.
+              </Typography>
+
+              {message && (
+                <Alert severity="success" sx={{ mb: 3, textAlign: 'left' }}>
+                  {message}
+                </Alert>
+              )}
+
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 3 }}>
+                <Button
+                  variant="contained"
+                  size="large"
+                  onClick={resendVerification}
+                  disabled={loading}
+                  startIcon={loading ? <CircularProgress size={20} /> : <Refresh />}
+                >
+                  {loading ? 'Sending...' : 'Resend Verification Email'}
+                </Button>
+              </Box>
+            </>
+          )}
 
           {status === 'pending' && !message && (
             <>

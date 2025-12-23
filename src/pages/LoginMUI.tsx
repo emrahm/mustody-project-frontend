@@ -39,6 +39,8 @@ export default function LoginMUI() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [emailVerificationNeeded, setEmailVerificationNeeded] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
 
   const {
     control,
@@ -56,6 +58,7 @@ export default function LoginMUI() {
   const onSubmit = async (data: FormData) => {
     setLoading(true);
     setError('');
+    setEmailVerificationNeeded(false);
 
     try {
       const response = await authAPI.login(data.email, data.password);
@@ -67,7 +70,31 @@ export default function LoginMUI() {
       setLocation('/dashboard');
     } catch (error: any) {
       console.error('Login error:', error);
-      setError(error.response?.data?.error || 'Login failed. Please check your credentials.');
+      
+      const errorMessage = error.response?.data?.error || 'Login failed. Please check your credentials.';
+      
+      // Check if error is related to email verification
+      if (errorMessage.includes('email not verified') || errorMessage.includes('verify your email')) {
+        // Redirect to verification page instead of showing alert
+        setLocation(`/verify-email?email=${encodeURIComponent(data.email)}`);
+        return;
+      } else {
+        setError(errorMessage);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (!userEmail) return;
+    
+    setLoading(true);
+    try {
+      await authAPI.resendVerification(userEmail);
+      setError('Verification email sent! Please check your inbox and spam folder.');
+    } catch (error: any) {
+      setError(error.response?.data?.error || 'Failed to send verification email. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -122,7 +149,22 @@ export default function LoginMUI() {
           </Typography>
 
           {error && (
-            <Alert severity="error" sx={{ mb: 3 }}>
+            <Alert 
+              severity={emailVerificationNeeded ? "warning" : "error"} 
+              sx={{ mb: 3 }}
+              action={
+                emailVerificationNeeded && (
+                  <Button 
+                    color="inherit" 
+                    size="small" 
+                    onClick={handleResendVerification}
+                    disabled={loading}
+                  >
+                    Resend Email
+                  </Button>
+                )
+              }
+            >
               {error}
             </Alert>
           )}

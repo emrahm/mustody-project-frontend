@@ -16,6 +16,7 @@ export default function Login() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [emailVerificationNeeded, setEmailVerificationNeeded] = useState(false);
 
   const handleSocialLogin = (provider: 'google' | 'github') => {
     const clientId = provider === 'google' 
@@ -40,6 +41,7 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setEmailVerificationNeeded(false);
     
     try {
       const response = await authAPI.login(formData.email, formData.password);
@@ -51,7 +53,32 @@ export default function Login() {
       setLocation('/dashboard');
     } catch (error: any) {
       console.error('Login error:', error);
-      setError(error.response?.data?.error || 'Login failed. Please check your credentials.');
+      
+      const errorMessage = error.response?.data?.error || 'Login failed. Please check your credentials.';
+      
+      // Check if error is related to email verification
+      if (errorMessage.includes('email not verified') || errorMessage.includes('verify your email')) {
+        // Redirect to verification page instead of showing alert
+        setLocation(`/verify-email?email=${encodeURIComponent(formData.email)}`);
+        return;
+      } else {
+        setError(errorMessage);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (!formData.email) return;
+    
+    setLoading(true);
+    try {
+      await authAPI.resendVerification(formData.email);
+      setError('Verification email sent! Please check your inbox and spam folder.');
+      setEmailVerificationNeeded(false);
+    } catch (error: any) {
+      setError(error.response?.data?.error || 'Failed to send verification email. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -75,8 +102,26 @@ export default function Login() {
           </CardHeader>
           <CardContent>
             {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-600 text-sm">
-                {error}
+              <div className={`mb-4 p-3 border rounded-md text-sm ${
+                emailVerificationNeeded 
+                  ? 'bg-yellow-50 border-yellow-200 text-yellow-800' 
+                  : 'bg-red-50 border-red-200 text-red-600'
+              }`}>
+                <div className="flex items-center justify-between">
+                  <span>{error}</span>
+                  {emailVerificationNeeded && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleResendVerification}
+                      disabled={loading}
+                      className="ml-2"
+                    >
+                      Resend Email
+                    </Button>
+                  )}
+                </div>
               </div>
             )}
 
