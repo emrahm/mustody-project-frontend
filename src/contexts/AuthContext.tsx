@@ -163,24 +163,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const initializeAuth = async () => {
       const token = localStorage.getItem('auth_token');
-      if (token) {
-        // Try to refresh token to validate it
-        const isValid = await refreshToken();
-        if (!isValid) {
-          setLoading(false);
-          return;
-        }
-        
-        // If we have stored user data, use it
-        const storedUser = localStorage.getItem('user_data');
-        if (storedUser) {
-          try {
-            const userData = JSON.parse(storedUser);
-            generateMenuItems(userData);
-          } catch (error) {
-            console.error('Failed to parse stored user data:', error);
-            localStorage.removeItem('user_data');
-          }
+      const storedUser = localStorage.getItem('user_data');
+      
+      if (token && storedUser) {
+        try {
+          const userData = JSON.parse(storedUser);
+          generateMenuItems(userData);
+        } catch (error) {
+          console.error('Failed to parse stored user data:', error);
+          localStorage.removeItem('user_data');
+          localStorage.removeItem('auth_token');
         }
       }
       setLoading(false);
