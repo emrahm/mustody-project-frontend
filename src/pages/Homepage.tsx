@@ -3,17 +3,10 @@ import { Shield, Server, Key, Zap, CheckCircle, ArrowRight, Lock, Globe, Users, 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
-import { useEffect, useState } from "react";
 
 export function Homepage() {
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  useEffect(() => {
-    const token = localStorage.getItem('auth_token');
-    setIsAuthenticated(!!token && !!user);
-  }, [user]);
 
   if (loading) {
     return (
@@ -22,6 +15,9 @@ export function Homepage() {
       </div>
     );
   }
+
+  // Check if user is authenticated
+  const isAuthenticated = !!user && !!localStorage.getItem('auth_token');
 
   if (isAuthenticated) {
     return (

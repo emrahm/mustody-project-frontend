@@ -27,6 +27,7 @@ import InvitationRegister from "./pages/InvitationRegister";
 import AuditLogs from "./pages/AuditLogs";
 import MessagingPage from "./pages/MessagingPage";
 import ApiKeyManagementPage from "./pages/ApiKeyManagementPage";
+import RoleManagement from "./pages/RoleManagement";
 import { Homepage } from "./pages/Homepage";
 import { ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -48,7 +49,8 @@ function Router() {
       <Route path="/tenant-admin/dashboard" component={TenantAdminDashboard} />
       <Route path="/tenant-user/dashboard" component={TenantUserDashboard} />
       <Route path="/company" component={CompanyManagement} />
-      <Route path="/users" component={UserManagement} />
+      <Route path="/users" component={() => <ProtectedRoute><UserManagement /></ProtectedRoute>} />
+      <Route path="/roles" component={() => <ProtectedRoute><RoleManagement /></ProtectedRoute>} />
       <Route path="/payment-links" component={PaymentLinksManagement} />
       <Route path="/payment-links/create" component={CreatePaymentLink} />
       <Route path="/payment/:id" component={PublicPaymentLink} />

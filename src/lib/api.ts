@@ -48,6 +48,9 @@ export const authAPI = {
   login: (email: string, password: string) =>
     api.post('/login', { email, password }),
   
+  refreshToken: () =>
+    api.post('/refresh-token'),
+  
   adminLogin: (email: string, password: string) =>
     api.post('/admin/login', { email, password }),
   

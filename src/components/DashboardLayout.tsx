@@ -333,15 +333,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </Typography>
           )}
           <Box sx={{ mt: 1, display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-            {user?.role && (
+            {user?.roles?.map(role => (
               <Chip 
-                key={user.role} 
-                label={user.role} 
+                key={role} 
+                label={role} 
                 size="small" 
                 variant="outlined"
                 sx={{ fontSize: '0.7rem', height: 20 }}
               />
-            )}
+            ))}
           </Box>
         </Box>
         <MenuItem onClick={() => setLocation('/profile')} sx={{ py: 1.5 }}>
