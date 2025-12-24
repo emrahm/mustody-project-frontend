@@ -6,6 +6,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AuthProvider } from "./contexts/AuthContext";
+import { NotificationProvider } from "./contexts/NotificationContext";
 import LandingPage from "./pages/LandingPage";
 import LoginMUI from "./pages/LoginMUI";
 import RegisterMUI from "./pages/RegisterMUI";
@@ -70,12 +71,14 @@ function App() {
       <MuiThemeProvider theme={theme}>
         <CssBaseline />
         <AuthProvider>
-          <ThemeProvider defaultTheme="light">
-            <TooltipProvider>
-              <Toaster />
-              <Router />
-            </TooltipProvider>
-          </ThemeProvider>
+          <NotificationProvider>
+            <ThemeProvider defaultTheme="light">
+              <TooltipProvider>
+                <Toaster />
+                <Router />
+              </TooltipProvider>
+            </ThemeProvider>
+          </NotificationProvider>
         </AuthProvider>
       </MuiThemeProvider>
     </ErrorBoundary>

@@ -127,4 +127,22 @@ export const apiKeyAPI = {
     api.patch(`/api-keys/${id}/toggle`, { is_active }),
 };
 
+// Notification API endpoints
+export const notificationAPI = {
+  getNotifications: (params?: { page?: number; limit?: number; unread_only?: boolean }) =>
+    api.get('/notifications', { params }),
+  
+  markAsRead: (id: string) =>
+    api.patch(`/notifications/${id}/read`),
+  
+  markAllAsRead: () =>
+    api.patch('/notifications/read-all'),
+  
+  subscribePush: (subscription: { endpoint: string; keys: { p256dh: string; auth: string } }) =>
+    api.post('/notifications/subscribe', subscription),
+  
+  sendNotification: (data: { user_id: string; title: string; message: string; type?: string; data?: any }) =>
+    api.post('/notifications/send', data),
+};
+
 export default api;

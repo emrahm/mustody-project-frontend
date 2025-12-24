@@ -42,6 +42,7 @@ import {
 } from '@mui/icons-material';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/contexts/AuthContext';
+import NotificationBell from './NotificationBell';
 
 const drawerWidth = 260;
 
@@ -266,20 +267,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </Typography>
           </Box>
 
-          <IconButton 
-            color="inherit" 
-            sx={{ 
-              mr: 2,
-              backgroundColor: alpha(theme.palette.action.hover, 0.04),
-              '&:hover': {
-                backgroundColor: alpha(theme.palette.action.hover, 0.08),
-              }
-            }}
-          >
-            <Badge badgeContent={3} color="error">
-              <Notifications />
-            </Badge>
-          </IconButton>
+          <NotificationBell />
 
           <IconButton
             size="large"
