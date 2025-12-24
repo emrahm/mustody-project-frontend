@@ -1,4 +1,6 @@
-import { useAuth } from '@/_core/hooks/useAuth';
+import React from 'react';
+import { Alert, Container } from '@mui/material';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface RoleGuardProps {
   allowedRoles: string[];
@@ -6,11 +8,17 @@ interface RoleGuardProps {
   fallback?: React.ReactNode;
 }
 
-export function RoleGuard({ allowedRoles, children, fallback = null }: RoleGuardProps) {
-  const { user } = useAuth();
+export function RoleGuard({ allowedRoles, children, fallback }: RoleGuardProps) {
+  const { canAccess } = useAuth();
 
-  if (!user || !allowedRoles.includes(user.role)) {
-    return <>{fallback}</>;
+  if (!canAccess(allowedRoles)) {
+    return fallback || (
+      <Container maxWidth="md" sx={{ py: 4 }}>
+        <Alert severity="error">
+          Access denied. You don't have the required permissions to view this page.
+        </Alert>
+      </Container>
+    );
   }
 
   return <>{children}</>;

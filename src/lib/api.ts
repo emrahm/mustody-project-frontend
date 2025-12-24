@@ -30,9 +30,12 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
+      console.log('401 error detected, current path:', window.location.pathname);
+      console.log('Token exists:', !!localStorage.getItem('auth_token'));
       localStorage.removeItem('auth_token');
-      // Don't redirect if on verify-email page
-      if (window.location.pathname !== '/verify-email') {
+      // Don't redirect if on verify-email or login page
+      if (window.location.pathname !== '/verify-email' && window.location.pathname !== '/login') {
+        console.log('Redirecting to login due to 401');
         window.location.href = '/login';
       }
     }
@@ -72,6 +75,8 @@ export const authAPI = {
   logout: () => api.post('/logout'),
   
   me: () => api.get('/me'),
+  
+  getMenuItems: () => api.get('/menu'),
 };
 
 // Tenant API endpoints
@@ -87,6 +92,23 @@ export const tenantAPI = {
   
   acceptInvitation: (token: string, name: string, password: string) =>
     api.post('/invitation/accept', { token, name, password }),
+};
+
+// API Key management endpoints
+export const apiKeyAPI = {
+  getApiKeys: () => api.get('/api-keys'),
+  
+  createApiKey: (name: string, permissions: string[], expires_at?: string) =>
+    api.post('/api-keys', { name, permissions, expires_at }),
+  
+  updateApiKey: (id: number, name: string, permissions: string[]) =>
+    api.put(`/api-keys/${id}`, { name, permissions }),
+  
+  deleteApiKey: (id: number) =>
+    api.delete(`/api-keys/${id}`),
+  
+  toggleApiKey: (id: number, is_active: boolean) =>
+    api.patch(`/api-keys/${id}/toggle`, { is_active }),
 };
 
 export default api;

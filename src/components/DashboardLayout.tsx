@@ -19,6 +19,7 @@ import {
   Chip,
   useTheme,
   alpha,
+  CircularProgress,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -35,8 +36,12 @@ import {
   Logout,
   ChevronLeft,
   Home,
+  Description,
+  Message,
+  CloudSync,
 } from '@mui/icons-material';
 import { useLocation } from 'wouter';
+import { useAuth } from '@/contexts/AuthContext';
 
 const drawerWidth = 260;
 
@@ -44,17 +49,21 @@ interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
-const menuItems = [
-  { text: 'Overview', icon: <Home />, path: '/dashboard', category: 'main' },
-  { text: 'Analytics', icon: <Analytics />, path: '/analytics', category: 'main' },
-  { text: 'Messaging', icon: <Notifications />, path: '/messaging', category: 'main' },
-  { text: 'Security Center', icon: <Security />, path: '/security', category: 'security' },
-  { text: 'API Management', icon: <Key />, path: '/api-keys', category: 'security' },
-  { text: 'Team Members', icon: <People />, path: '/team', category: 'management' },
-  { text: 'Company Profile', icon: <Business />, path: '/company', category: 'management' },
-  { text: 'Support Center', icon: <Support />, path: '/support', category: 'support' },
-  { text: 'Account Settings', icon: <Settings />, path: '/settings', category: 'support' },
-];
+const iconMap: { [key: string]: React.ReactElement } = {
+  'Home': <Home />,
+  'Dashboard': <Dashboard />,
+  'Analytics': <Analytics />,
+  'Notifications': <Notifications />,
+  'Message': <Message />,
+  'Description': <Description />,
+  'CloudSync': <CloudSync />,
+  'People': <People />,
+  'Business': <Business />,
+  'Key': <Key />,
+  'Security': <Security />,
+  'Settings': <Settings />,
+  'Support': <Support />,
+};
 
 const menuCategories = {
   main: 'Dashboard',
@@ -66,6 +75,7 @@ const menuCategories = {
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const theme = useTheme();
   const [, setLocation] = useLocation();
+  const { user, menuItems, loading, logout, canAccess } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const currentPath = window.location.pathname;
@@ -83,37 +93,41 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('auth_token');
+    logout();
     setLocation('/login');
   };
 
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
   const renderMenuItems = () => {
-    const groupedItems = menuItems.reduce((acc, item) => {
-      if (!acc[item.category]) acc[item.category] = [];
-      acc[item.category].push(item);
+    // Filter menu items based on user roles
+    const filteredItems = menuItems.filter(item => 
+      canAccess(item.roles) || item.roles.length === 0
+    );
+
+    // Group by category (if available) or show as flat list
+    const groupedItems = filteredItems.reduce((acc, item) => {
+      const category = 'main'; // Default category since backend doesn't provide it yet
+      if (!acc[category]) acc[category] = [];
+      acc[category].push(item);
       return acc;
     }, {} as Record<string, typeof menuItems>);
 
     return Object.entries(groupedItems).map(([category, items]) => (
       <Box key={category}>
-        <Typography
-          variant="overline"
-          sx={{
-            px: 3,
-            py: 1,
-            display: 'block',
-            color: 'text.secondary',
-            fontWeight: 600,
-            fontSize: '0.75rem',
-          }}
-        >
-          {menuCategories[category as keyof typeof menuCategories]}
-        </Typography>
         <List sx={{ px: 2 }}>
           {items.map((item) => {
             const isActive = currentPath === item.path;
+            const icon = iconMap[item.icon] || <Dashboard />;
+            
             return (
-              <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
+              <ListItem key={item.id} disablePadding sx={{ mb: 0.5 }}>
                 <ListItemButton
                   onClick={() => setLocation(item.path)}
                   sx={{
@@ -134,10 +148,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                       minWidth: 40,
                     }}
                   >
-                    {item.icon}
+                    {icon}
                   </ListItemIcon>
                   <ListItemText 
-                    primary={item.text}
+                    primary={item.label}
                     primaryTypographyProps={{
                       fontSize: '0.875rem',
                       fontWeight: isActive ? 600 : 400,
@@ -286,7 +300,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 backgroundColor: 'primary.main',
               }}
             >
-              JD
+              {user?.name?.charAt(0)?.toUpperCase() || 'U'}
             </Avatar>
           </IconButton>
         </Toolbar>
@@ -308,11 +322,27 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       >
         <Box sx={{ px: 2, py: 1.5, borderBottom: `1px solid ${theme.palette.divider}` }}>
           <Typography variant="subtitle2" fontWeight="600">
-            John Doe
+            {user?.name || 'User'}
           </Typography>
           <Typography variant="caption" color="text.secondary">
-            john@company.com
+            {user?.email}
           </Typography>
+          {user?.tenant_name && (
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+              {user.tenant_name}
+            </Typography>
+          )}
+          <Box sx={{ mt: 1, display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+            {user?.role && (
+              <Chip 
+                key={user.role} 
+                label={user.role} 
+                size="small" 
+                variant="outlined"
+                sx={{ fontSize: '0.7rem', height: 20 }}
+              />
+            )}
+          </Box>
         </Box>
         <MenuItem onClick={() => setLocation('/profile')} sx={{ py: 1.5 }}>
           <ListItemIcon>

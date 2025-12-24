@@ -25,6 +25,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { useLocation } from 'wouter';
 import { authAPI } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 const schema = yup.object({
   email: yup.string().email('Invalid email').required('Email is required'),
@@ -36,6 +37,7 @@ type FormData = yup.InferType<typeof schema>;
 
 export default function LoginMUI() {
   const [, setLocation] = useLocation();
+  const { login } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -63,10 +65,10 @@ export default function LoginMUI() {
     try {
       const response = await authAPI.login(data.email, data.password);
       
-      // Store the token
-      localStorage.setItem('auth_token', response.data.token);
+      // Store token and user data from login response
+      await login(response.data.token, response.data.user);
       
-      console.log('Login successful:', response.data);
+      console.log('Login successful, user:', response.data.user);
       setLocation('/dashboard');
     } catch (error: any) {
       console.error('Login error:', error);
@@ -75,7 +77,6 @@ export default function LoginMUI() {
       
       // Check if error is related to email verification
       if (errorMessage.includes('email not verified') || errorMessage.includes('verify your email')) {
-        // Redirect to verification page instead of showing alert
         setLocation(`/verify-email?email=${encodeURIComponent(data.email)}`);
         return;
       } else {
