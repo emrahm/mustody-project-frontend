@@ -1,9 +1,145 @@
-import { Link } from "wouter";
-import { Shield, Server, Key, Zap, CheckCircle, ArrowRight, Lock, Globe, Users, Star } from "lucide-react";
+import { Link, useLocation } from "wouter";
+import { Shield, Server, Key, Zap, CheckCircle, ArrowRight, Lock, Globe, Users, Star, BarChart3, Wallet, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { useAuth } from "@/contexts/AuthContext";
+import { useEffect, useState } from "react";
 
 export function Homepage() {
+  const { user, loading } = useAuth();
+  const [, setLocation] = useLocation();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    const token = localStorage.getItem('auth_token');
+    setIsAuthenticated(!!token && !!user);
+  }, [user]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        {/* Navigation for authenticated users */}
+        <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center h-16">
+              <div className="flex items-center">
+                <Shield className="h-8 w-8 text-blue-600" />
+                <span className="ml-2 text-xl font-bold text-gray-900">Mustody</span>
+              </div>
+              <div className="flex items-center space-x-4">
+                <span className="text-sm text-gray-600">Welcome, {user?.name}</span>
+                <Button onClick={() => setLocation('/dashboard')} className="bg-blue-600 hover:bg-blue-700">
+                  Go to Dashboard
+                </Button>
+              </div>
+            </div>
+          </div>
+        </nav>
+
+        {/* Dashboard Overview */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900">Platform Overview</h1>
+            <p className="text-gray-600 mt-2">Manage your digital assets and blockchain infrastructure</p>
+          </div>
+
+          {/* Quick Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <Wallet className="h-8 w-8 text-blue-600" />
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">Total Assets</p>
+                    <p className="text-2xl font-bold text-gray-900">$2.4M</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <BarChart3 className="h-8 w-8 text-green-600" />
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">Active Wallets</p>
+                    <p className="text-2xl font-bold text-gray-900">12</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <Key className="h-8 w-8 text-purple-600" />
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">API Keys</p>
+                    <p className="text-2xl font-bold text-gray-900">3</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <Shield className="h-8 w-8 text-red-600" />
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">Security Score</p>
+                    <p className="text-2xl font-bold text-gray-900">98%</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Quick Actions */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => setLocation('/dashboard')}>
+              <CardContent className="p-6">
+                <BarChart3 className="h-12 w-12 text-blue-600 mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Analytics Dashboard</h3>
+                <p className="text-gray-600 mb-4">View detailed analytics and performance metrics</p>
+                <Button variant="outline" className="w-full">
+                  View Dashboard <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => setLocation('/api-keys')}>
+              <CardContent className="p-6">
+                <Key className="h-12 w-12 text-purple-600 mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">API Management</h3>
+                <p className="text-gray-600 mb-4">Manage API keys and integration settings</p>
+                <Button variant="outline" className="w-full">
+                  Manage APIs <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => setLocation('/messaging')}>
+              <CardContent className="p-6">
+                <Users className="h-12 w-12 text-green-600 mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Team Collaboration</h3>
+                <p className="text-gray-600 mb-4">Communicate with your team members</p>
+                <Button variant="outline" className="w-full">
+                  Open Messages <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Original homepage for non-authenticated users
   return (
     <div className="min-h-screen bg-white">
       {/* Navigation */}
@@ -50,182 +186,59 @@ export function Homepage() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
               <Link href="/register">
                 <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg">
-                  Start Building
-                  <ArrowRight className="ml-2 h-5 w-5" />
+                  Start Building <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </Link>
-              <Button variant="outline" size="lg" className="px-8 py-4 text-lg border-gray-300">
-                Request Demo
-              </Button>
-            </div>
-            
-            {/* Trust indicators */}
-            <div className="flex flex-wrap justify-center items-center gap-8 text-gray-500 text-sm">
-              <div className="flex items-center">
-                <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
-                SOC 2 Compliant
-              </div>
-              <div className="flex items-center">
-                <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
-                99.9% Uptime SLA
-              </div>
-              <div className="flex items-center">
-                <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
-                Enterprise Grade
-              </div>
+              <Link href="/login">
+                <Button size="lg" variant="outline" className="px-8 py-4 text-lg">
+                  View Demo
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
+      <section id="features" className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              Everything you need to build
-            </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Complete blockchain infrastructure in one simple integration
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">Enterprise-Grade Infrastructure</h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              Built for scale, security, and reliability. Everything you need to integrate blockchain technology.
             </p>
           </div>
-
+          
           <div className="grid md:grid-cols-3 gap-8">
-            <Card className="border border-gray-200 hover:border-blue-200 hover:shadow-lg transition-all duration-300">
+            <Card className="border-0 shadow-lg">
               <CardContent className="p-8">
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-6">
-                  <Shield className="h-6 w-6 text-blue-600" />
-                </div>
-                <h3 className="text-xl font-semibold mb-4 text-gray-900">MPC Custody</h3>
+                <Shield className="h-12 w-12 text-blue-600 mb-6" />
+                <h3 className="text-xl font-semibold text-gray-900 mb-4">Multi-Party Computation</h3>
                 <p className="text-gray-600 leading-relaxed">
-                  Multi-Party Computation ensures your private keys are never exposed. 
-                  Distributed security across hardware modules.
+                  Advanced cryptographic security with distributed key management. No single point of failure.
                 </p>
               </CardContent>
             </Card>
-
-            <Card className="border border-gray-200 hover:border-blue-200 hover:shadow-lg transition-all duration-300">
-              <CardContent className="p-8">
-                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-6">
-                  <Server className="h-6 w-6 text-green-600" />
-                </div>
-                <h3 className="text-xl font-semibold mb-4 text-gray-900">RPC Network</h3>
-                <p className="text-gray-600 leading-relaxed">
-                  High-performance blockchain access without running nodes. 
-                  Multi-chain support with 99.9% uptime guarantee.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border border-gray-200 hover:border-blue-200 hover:shadow-lg transition-all duration-300">
-              <CardContent className="p-8">
-                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-6">
-                  <Key className="h-6 w-6 text-purple-600" />
-                </div>
-                <h3 className="text-xl font-semibold mb-4 text-gray-900">Simple APIs</h3>
-                <p className="text-gray-600 leading-relaxed">
-                  RESTful APIs with OAuth 1.0a security. 
-                  Integrate blockchain operations in minutes with our SDKs.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Security Section */}
-      <section id="security" className="py-20 px-4 sm:px-6 lg:px-8 bg-gray-50">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
-            <div>
-              <h2 className="text-4xl font-bold text-gray-900 mb-6">
-                Enterprise Security Standards
-              </h2>
-              <p className="text-xl text-gray-600 mb-8 leading-relaxed">
-                Built with institutional-grade security from day one. 
-                Your assets are protected by the same technology used by major financial institutions.
-              </p>
-              
-              <div className="space-y-6">
-                <div className="flex items-start">
-                  <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center mr-4 mt-1">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900 mb-1">Multi-Party Computation</h3>
-                    <p className="text-gray-600">Private keys distributed across secure enclaves</p>
-                  </div>
-                </div>
-                <div className="flex items-start">
-                  <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center mr-4 mt-1">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900 mb-1">Hardware Security Modules</h3>
-                    <p className="text-gray-600">FIPS 140-2 Level 3 certified HSM protection</p>
-                  </div>
-                </div>
-                <div className="flex items-start">
-                  <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center mr-4 mt-1">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900 mb-1">OAuth 1.0a Authentication</h3>
-                    <p className="text-gray-600">RSA-SHA256 signatures with nonce protection</p>
-                  </div>
-                </div>
-              </div>
-            </div>
             
-            <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-blue-50 rounded-xl">
-                  <div className="flex items-center">
-                    <Lock className="h-5 w-5 text-blue-600 mr-3" />
-                    <span className="font-medium text-gray-900">MPC Key Shares</span>
-                  </div>
-                  <span className="text-green-600 font-semibold text-sm">Secure</span>
-                </div>
-                
-                <div className="flex items-center justify-between p-4 bg-green-50 rounded-xl">
-                  <div className="flex items-center">
-                    <Globe className="h-5 w-5 text-green-600 mr-3" />
-                    <span className="font-medium text-gray-900">Multi-Chain RPC</span>
-                  </div>
-                  <span className="text-green-600 font-semibold text-sm">Active</span>
-                </div>
-                
-                <div className="flex items-center justify-between p-4 bg-purple-50 rounded-xl">
-                  <div className="flex items-center">
-                    <Zap className="h-5 w-5 text-purple-600 mr-3" />
-                    <span className="font-medium text-gray-900">API Gateway</span>
-                  </div>
-                  <span className="text-green-600 font-semibold text-sm">99.9% Uptime</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-blue-600">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-4xl font-bold text-white mb-6">
-            Ready to build the future?
-          </h2>
-          <p className="text-xl text-blue-100 mb-10 leading-relaxed">
-            Join thousands of developers building on secure blockchain infrastructure
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/register">
-              <Button size="lg" variant="secondary" className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-4 text-lg font-semibold">
-                Start Building Now
-              </Button>
-            </Link>
-            <Button size="lg" variant="outline" className="border-white text-white hover:bg-white hover:text-blue-600 px-8 py-4 text-lg font-semibold">
-              Talk to Sales
-            </Button>
+            <Card className="border-0 shadow-lg">
+              <CardContent className="p-8">
+                <Server className="h-12 w-12 text-blue-600 mb-6" />
+                <h3 className="text-xl font-semibold text-gray-900 mb-4">Multi-Chain Support</h3>
+                <p className="text-gray-600 leading-relaxed">
+                  One API for Bitcoin, Ethereum, and 50+ blockchains. Unified interface for all networks.
+                </p>
+              </CardContent>
+            </Card>
+            
+            <Card className="border-0 shadow-lg">
+              <CardContent className="p-8">
+                <Key className="h-12 w-12 text-blue-600 mb-6" />
+                <h3 className="text-xl font-semibold text-gray-900 mb-4">Developer-First APIs</h3>
+                <p className="text-gray-600 leading-relaxed">
+                  RESTful APIs, WebSocket streams, and SDKs. Get started in minutes, not months.
+                </p>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </section>
