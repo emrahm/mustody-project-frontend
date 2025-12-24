@@ -25,6 +25,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { useLocation } from 'wouter';
 import { authAPI } from '@/lib/api';
+import { getErrorMessage, getErrorDetails } from '@/lib/errorUtils';
 import { useAuth } from '@/contexts/AuthContext';
 
 const schema = yup.object({
@@ -73,14 +74,22 @@ export default function LoginMUI() {
     } catch (error: any) {
       console.error('Login error:', error);
       
-      const errorMessage = error.response?.data?.error || 'Login failed. Please check your credentials.';
+      // Get detailed error information
+      const errorDetails = getErrorDetails(error);
+      console.error('Error details:', errorDetails);
+      
+      const errorMessage = getErrorMessage(error);
       
       // Check if error is related to email verification
       if (errorMessage.includes('email not verified') || errorMessage.includes('verify your email')) {
         setLocation(`/verify-email?email=${encodeURIComponent(data.email)}`);
         return;
       } else {
-        setError(errorMessage);
+        // Show detailed error message with correlation ID if available
+        const displayMessage = errorDetails.correlationId 
+          ? `${errorMessage} (ID: ${errorDetails.correlationId})`
+          : errorMessage;
+        setError(displayMessage);
       }
     } finally {
       setLoading(false);

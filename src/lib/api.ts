@@ -33,12 +33,25 @@ api.interceptors.response.use(
       console.log('401 error detected, current path:', window.location.pathname);
       console.log('Token exists:', !!localStorage.getItem('auth_token'));
       localStorage.removeItem('auth_token');
+      localStorage.removeItem('user_data');
       // Don't redirect if on verify-email or login page
       if (window.location.pathname !== '/verify-email' && window.location.pathname !== '/login') {
         console.log('Redirecting to login due to 401');
         window.location.href = '/login';
       }
     }
+    
+    // Log detailed error for development
+    if (error.response?.data) {
+      console.error('API Error Details:', {
+        status: error.response.status,
+        statusText: error.response.statusText,
+        data: error.response.data,
+        url: error.config?.url,
+        method: error.config?.method,
+      });
+    }
+    
     return Promise.reject(error);
   }
 );
