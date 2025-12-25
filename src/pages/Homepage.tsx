@@ -45,12 +45,13 @@ export function Homepage() {
     setLocation('/');
   };
 
-  // Animated background elements
+  // Animated background elements with chain figures
   const FloatingElements = () => (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {[...Array(20)].map((_, i) => (
+      {/* Floating particles */}
+      {[...Array(15)].map((_, i) => (
         <motion.div
-          key={i}
+          key={`particle-${i}`}
           className="absolute w-2 h-2 bg-blue-400/20 dark:bg-blue-400/30 rounded-full"
           animate={{
             x: [0, 100, 0],
@@ -65,6 +66,98 @@ export function Homepage() {
           style={{
             left: `${Math.random() * 100}%`,
             top: `${Math.random() * 100}%`,
+          }}
+        />
+      ))}
+      
+      {/* Floating chain icons */}
+      {[
+        { icon: '⟠', name: 'Ethereum', color: 'text-blue-500', size: 'text-4xl' },
+        { icon: '⬢', name: 'BSC', color: 'text-yellow-500', size: 'text-5xl' },
+        { icon: '◊', name: 'Cosmos', color: 'text-purple-500', size: 'text-4xl' },
+        { icon: '◈', name: 'Polygon', color: 'text-indigo-500', size: 'text-3xl' },
+        { icon: '⬟', name: 'Avalanche', color: 'text-red-500', size: 'text-4xl' },
+        { icon: '◯', name: 'Solana', color: 'text-green-500', size: 'text-3xl' },
+      ].map((chain, i) => (
+        <motion.div
+          key={`chain-${i}`}
+          className={`absolute ${chain.size} ${chain.color} opacity-40 dark:opacity-60 font-bold drop-shadow-lg`}
+          animate={{
+            x: [0, 200, -50, 0],
+            y: [0, -150, 100, 0],
+            rotate: [0, 180, 360, 0],
+            scale: [1, 1.5, 0.8, 1],
+          }}
+          transition={{
+            duration: 20 + i * 2,
+            repeat: Infinity,
+            delay: i * 3,
+            ease: "easeInOut",
+          }}
+          style={{
+            left: `${5 + i * 15}%`,
+            top: `${15 + (i % 4) * 20}%`,
+          }}
+        >
+          <motion.div
+            animate={{
+              textShadow: [
+                '0 0 10px currentColor',
+                '0 0 20px currentColor',
+                '0 0 10px currentColor'
+              ]
+            }}
+            transition={{
+              duration: 3,
+              repeat: Infinity,
+              delay: i * 0.5,
+            }}
+          >
+            {chain.icon}
+          </motion.div>
+        </motion.div>
+      ))}
+      
+      {/* Connecting lines animation */}
+      {[...Array(5)].map((_, i) => (
+        <motion.div
+          key={`line-${i}`}
+          className="absolute h-0.5 bg-gradient-to-r from-transparent via-blue-400/50 to-transparent rounded-full"
+          style={{
+            width: '300px',
+            left: `${10 + i * 20}%`,
+            top: `${25 + i * 15}%`,
+          }}
+          animate={{
+            scaleX: [0, 1, 0],
+            opacity: [0, 0.8, 0],
+            rotateZ: [0, 5, -5, 0],
+          }}
+          transition={{
+            duration: 6,
+            repeat: Infinity,
+            delay: i * 2,
+          }}
+        />
+      ))}
+      
+      {/* Pulsing network nodes */}
+      {[...Array(8)].map((_, i) => (
+        <motion.div
+          key={`node-${i}`}
+          className="absolute w-3 h-3 bg-cyan-400/60 rounded-full"
+          style={{
+            left: `${15 + i * 12}%`,
+            top: `${30 + (i % 3) * 25}%`,
+          }}
+          animate={{
+            scale: [1, 2, 1],
+            opacity: [0.3, 0.8, 0.3],
+          }}
+          transition={{
+            duration: 4,
+            repeat: Infinity,
+            delay: i * 0.8,
           }}
         />
       ))}
@@ -196,7 +289,7 @@ export function Homepage() {
                 animate={{ opacity: [1, 0.7, 1] }}
                 transition={{ duration: 2, repeat: Infinity }}
               >
-                Supporting Ethereum • Cosmos • Multi-Chain Architecture
+                Supporting Ethereum • Binance Smart Chain • Cosmos • Multi-Chain Architecture
               </motion.div>
             </motion.div>
             
@@ -329,8 +422,8 @@ export function Homepage() {
                   <Coins className="h-6 w-6 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Ethereum Ecosystem</h3>
-                  <p className="text-gray-600 dark:text-gray-300">Full support for Ethereum mainnet and all major EVM-compatible chains.</p>
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Ethereum & BSC Ecosystem</h3>
+                  <p className="text-gray-600 dark:text-gray-300">Full support for Ethereum, Binance Smart Chain and all major EVM-compatible networks.</p>
                 </div>
               </div>
               
@@ -358,16 +451,25 @@ export function Homepage() {
             <div className="relative">
               <div className="bg-gradient-to-br from-blue-100/50 to-cyan-100/50 dark:from-blue-500/20 dark:to-cyan-500/20 rounded-2xl p-8 border border-gray-200 dark:border-white/10">
                 <div className="grid grid-cols-2 gap-4">
-                  {['Ethereum', 'Polygon', 'Cosmos Hub', 'Osmosis', 'Juno', 'Stargaze', 'Akash', 'Kava'].map((chain, i) => (
+                  {['Ethereum', 'Binance Smart Chain', 'Polygon', 'Cosmos Hub', 'Osmosis', 'Juno', 'Stargaze', 'Akash'].map((chain, i) => (
                     <motion.div
                       key={chain}
                       initial={{ opacity: 0, scale: 0.8 }}
                       whileInView={{ opacity: 1, scale: 1 }}
                       transition={{ duration: 0.4, delay: i * 0.1 }}
                       viewport={{ once: true }}
-                      className="bg-white/70 dark:bg-black/40 rounded-lg p-4 text-center border border-gray-200 dark:border-white/10"
+                      className="bg-white/70 dark:bg-black/40 rounded-lg p-4 text-center border border-gray-200 dark:border-white/10 hover:scale-105 transition-transform duration-200"
                     >
-                      <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full mx-auto mb-2"></div>
+                      <div className={`w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center text-white font-bold text-sm ${
+                        chain === 'Ethereum' ? 'bg-gradient-to-br from-blue-500 to-blue-600' :
+                        chain === 'Binance Smart Chain' ? 'bg-gradient-to-br from-yellow-500 to-yellow-600' :
+                        chain === 'Polygon' ? 'bg-gradient-to-br from-purple-500 to-purple-600' :
+                        'bg-gradient-to-br from-cyan-500 to-teal-500'
+                      }`}>
+                        {chain === 'Ethereum' ? '⟠' :
+                         chain === 'Binance Smart Chain' ? '⬢' :
+                         chain === 'Polygon' ? '◊' : '◈'}
+                      </div>
                       <span className="text-sm text-gray-900 dark:text-white font-medium">{chain}</span>
                     </motion.div>
                   ))}
