@@ -30,14 +30,13 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      console.log('401 error detected, current path:', window.location.pathname);
-      console.log('Token exists:', !!localStorage.getItem('auth_token'));
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('user_data');
-      // Don't redirect if on public pages (home, verify-email, login, register)
-      const publicPaths = ['/', '/verify-email', '/login', '/register', '/landing'];
-      if (!publicPaths.includes(window.location.pathname)) {
-        console.log('Redirecting to login due to 401');
+      // Only clear token and redirect if it's NOT a public page and NOT the homepage
+      const publicPaths = ['/verify-email', '/login', '/register', '/landing'];
+      const isHomepage = window.location.pathname === '/';
+      
+      if (!publicPaths.includes(window.location.pathname) && !isHomepage) {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user_data');
         window.location.href = '/login';
       }
     }

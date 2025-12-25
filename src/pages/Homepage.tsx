@@ -28,6 +28,11 @@ export function Homepage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Debug authentication state
+  useEffect(() => {
+    console.log('Homepage - User:', user, 'Loading:', loading, 'Token:', !!localStorage.getItem('auth_token'));
+  }, [user, loading]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center">
@@ -36,8 +41,8 @@ export function Homepage() {
     );
   }
 
-  // Check if user is authenticated
-  const isAuthenticated = !!user && !!localStorage.getItem('auth_token');
+  // Check if user is authenticated - more robust check
+  const isAuthenticated = !loading && !!user && !!localStorage.getItem('auth_token');
 
   const handleLogout = () => {
     logout();
@@ -253,8 +258,8 @@ export function Homepage() {
               transition={{ duration: 0.8 }}
               className="inline-flex items-center px-4 py-2 bg-blue-100 dark:bg-blue-500/20 border border-blue-200 dark:border-blue-400/30 text-blue-800 dark:text-blue-300 rounded-full text-sm font-medium mb-8"
             >
-              <Star className="w-4 h-4 mr-2" />
-              Trusted by 5000+ enterprises worldwide
+              <Shield className="w-4 h-4 mr-2" />
+              Enterprise MPC Custody • Multi-Chain Infrastructure
             </motion.div>
             
             <motion.h1
@@ -264,11 +269,11 @@ export function Homepage() {
               className="text-6xl md:text-7xl font-bold mb-8 leading-tight"
             >
               <span className="bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
-                Incorruptible
+                Secure Blockchain
               </span>
               <br />
               <span className="bg-gradient-to-r from-blue-500 via-cyan-500 to-teal-500 bg-clip-text text-transparent">
-                Financial Infrastructure
+                Custody Wallets
               </span>
             </motion.h1>
             
@@ -279,9 +284,25 @@ export function Homepage() {
               className="relative mb-12"
             >
               <p className="text-xl text-gray-600 dark:text-gray-300 max-w-4xl mx-auto leading-relaxed mb-8">
-                Enterprise-grade multi-chain custody wallet infrastructure with Multi-Party Computation technology. 
-                Build secure, scalable blockchain applications without the complexity.
+                <strong>Multi-Party Computation (MPC)</strong> powered custody wallet infrastructure. 
+                Secure, scalable, and compliant digital asset management for enterprises across multiple blockchains.
               </p>
+              
+              {/* Key features highlight */}
+              <div className="flex flex-wrap justify-center gap-6 mb-8">
+                <div className="flex items-center space-x-2 bg-white/70 dark:bg-black/30 px-4 py-2 rounded-full border border-gray-200 dark:border-white/10">
+                  <Shield className="w-4 h-4 text-blue-500" />
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">MPC Security</span>
+                </div>
+                <div className="flex items-center space-x-2 bg-white/70 dark:bg-black/30 px-4 py-2 rounded-full border border-gray-200 dark:border-white/10">
+                  <Network className="w-4 h-4 text-cyan-500" />
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Multi-Chain</span>
+                </div>
+                <div className="flex items-center space-x-2 bg-white/70 dark:bg-black/30 px-4 py-2 rounded-full border border-gray-200 dark:border-white/10">
+                  <Wallet className="w-4 h-4 text-teal-500" />
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Enterprise Grade</span>
+                </div>
+              </div>
               
               {/* Animated text carousel */}
               <motion.div
@@ -289,7 +310,7 @@ export function Homepage() {
                 animate={{ opacity: [1, 0.7, 1] }}
                 transition={{ duration: 2, repeat: Infinity }}
               >
-                Supporting Ethereum • Binance Smart Chain • Cosmos • Multi-Chain Architecture
+                🔐 No Single Point of Failure • 🌐 Cross-Chain Operations • 🏢 Institutional Compliance
               </motion.div>
             </motion.div>
             
@@ -305,18 +326,18 @@ export function Homepage() {
                   className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white px-8 py-4 text-lg border-0"
                   onClick={() => setLocation('/dashboard')}
                 >
-                  Go to Dashboard <ArrowRight className="ml-2 h-5 w-5" />
+                  Access Custody Platform <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               ) : (
                 <>
                   <Link href="/register">
                     <Button size="lg" className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white px-8 py-4 text-lg border-0">
-                      Start Building <ArrowRight className="ml-2 h-5 w-5" />
+                      Start Custody Service <ArrowRight className="ml-2 h-5 w-5" />
                     </Button>
                   </Link>
                   <Link href="/login">
                     <Button size="lg" variant="outline" className="border-gray-300 dark:border-white/20 text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-white/10 px-8 py-4 text-lg">
-                      View Demo <Eye className="ml-2 h-5 w-5" />
+                      View MPC Demo <Eye className="ml-2 h-5 w-5" />
                     </Button>
                   </Link>
                 </>
@@ -332,11 +353,11 @@ export function Homepage() {
           <div className="text-center mb-20">
             <h2 className="text-5xl font-bold mb-6">
               <span className="bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
-                Enterprise-Grade Infrastructure
+                MPC Custody Technology
               </span>
             </h2>
             <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-              Built for scale, security, and reliability. Everything you need to integrate blockchain technology.
+              Advanced Multi-Party Computation ensures your digital assets are protected with institutional-grade security and compliance.
             </p>
           </div>
           
@@ -352,9 +373,9 @@ export function Homepage() {
                   <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center mb-6">
                     <Shield className="h-8 w-8 text-white" />
                   </div>
-                  <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">Multi-Party Computation</h3>
+                  <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">MPC Custody Security</h3>
                   <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-                    Advanced cryptographic security with distributed key management. No single point of failure for maximum security.
+                    Multi-Party Computation eliminates single points of failure. Private keys are never fully reconstructed, ensuring maximum security for institutional custody.
                   </p>
                 </CardContent>
               </Card>
@@ -371,9 +392,9 @@ export function Homepage() {
                   <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-xl flex items-center justify-center mb-6">
                     <Network className="h-8 w-8 text-white" />
                   </div>
-                  <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">Multi-Chain Support</h3>
+                  <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">Cross-Chain Custody</h3>
                   <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-                    Ethereum, Cosmos, and 50+ blockchains. Unified API interface for seamless cross-chain operations.
+                    Manage digital assets across Ethereum, BSC, Cosmos, and 50+ blockchains from a single custody platform with unified security protocols.
                   </p>
                 </CardContent>
               </Card>
@@ -390,9 +411,9 @@ export function Homepage() {
                   <div className="w-16 h-16 bg-gradient-to-br from-teal-500 to-green-500 rounded-xl flex items-center justify-center mb-6">
                     <Wallet className="h-8 w-8 text-white" />
                   </div>
-                  <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">Custody Wallet APIs</h3>
+                  <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">Enterprise Wallet APIs</h3>
                   <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-                    RESTful APIs for wallet creation, transfers, and management. Enterprise-ready with comprehensive SDKs.
+                    Institutional-grade custody APIs for wallet creation, secure transactions, and compliance reporting. Built for banks, exchanges, and fintech companies.
                   </p>
                 </CardContent>
               </Card>

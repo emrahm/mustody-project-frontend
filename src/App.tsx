@@ -74,7 +74,7 @@ function App() {
         <CssBaseline />
         <AuthProvider>
           <NotificationProvider>
-            <ThemeProvider defaultTheme="light">
+            <ThemeProvider defaultTheme="light" switchable={true}>
               <TooltipProvider>
                 <Toaster />
                 <Router />

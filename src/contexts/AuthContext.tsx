@@ -108,29 +108,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const generateMenuItems = (userData: User | null) => {
-    if (!userData) return;
-
-    // Collect all roles from user and memberships
-    const allRoles = [userData.role];
-    if (userData.members) {
-      userData.members.forEach(member => {
-        if (!allRoles.includes(member.role)) {
-          allRoles.push(member.role);
-        }
-      });
+    if (!userData) {
+      setMenuItems([]);
+      return;
     }
-
-    // Update user with all roles
-    const updatedUser = { ...userData, roles: allRoles };
-    setUser(updatedUser);
-    
-    // Store user data in localStorage for persistence
-    localStorage.setItem('user_data', JSON.stringify(updatedUser));
 
     // Generate menu based on roles
     const menuItems: MenuItem[] = [
       { id: '1', label: 'Dashboard', path: '/dashboard', icon: 'Dashboard', roles: [], order: 1 },
     ];
+
+    const allRoles = userData.roles || [userData.role];
 
     // Admin/Owner specific items
     if (allRoles.includes('admin') || allRoles.includes('owner')) {
@@ -161,19 +149,35 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   useEffect(() => {
-    const initializeAuth = async () => {
+    const initializeAuth = () => {
       const token = localStorage.getItem('auth_token');
       const storedUser = localStorage.getItem('user_data');
       
       if (token && storedUser) {
         try {
           const userData = JSON.parse(storedUser);
-          generateMenuItems(userData);
+          
+          // Add roles to user data if not present
+          const allRoles = [userData.role];
+          if (userData.members) {
+            userData.members.forEach(member => {
+              if (!allRoles.includes(member.role)) {
+                allRoles.push(member.role);
+              }
+            });
+          }
+          
+          const userWithRoles = { ...userData, roles: allRoles };
+          setUser(userWithRoles);
+          generateMenuItems(userWithRoles);
         } catch (error) {
           console.error('Failed to parse stored user data:', error);
           localStorage.removeItem('user_data');
           localStorage.removeItem('auth_token');
+          setUser(null);
         }
+      } else {
+        setUser(null);
       }
       setLoading(false);
     };
@@ -183,8 +187,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (token: string, userData?: User) => {
     localStorage.setItem('auth_token', token);
+    
     if (userData) {
-      generateMenuItems(userData);
+      // Add roles to user data
+      const allRoles = [userData.role];
+      if (userData.members) {
+        userData.members.forEach(member => {
+          if (!allRoles.includes(member.role)) {
+            allRoles.push(member.role);
+          }
+        });
+      }
+      
+      const userWithRoles = { ...userData, roles: allRoles };
+      
+      // Store user data in localStorage for persistence
+      localStorage.setItem('user_data', JSON.stringify(userWithRoles));
+      
+      // Set user first, then generate menu items
+      setUser(userWithRoles);
+      generateMenuItems(userWithRoles);
     } else {
       await fetchUserData();
     }
