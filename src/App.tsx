@@ -29,6 +29,7 @@ import AuditLogs from "./pages/AuditLogs";
 import MessagingPage from "./pages/MessagingPage";
 import ApiKeyManagementPage from "./pages/ApiKeyManagementPage";
 import RoleManagement from "./pages/RoleManagement";
+import TenantManagement from "./pages/TenantManagement";
 import { Homepage } from "./pages/Homepage";
 import { ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -52,6 +53,7 @@ function Router() {
       <Route path="/company" component={CompanyManagement} />
       <Route path="/users" component={() => <ProtectedRoute><UserManagement /></ProtectedRoute>} />
       <Route path="/roles" component={() => <ProtectedRoute><RoleManagement /></ProtectedRoute>} />
+      <Route path="/tenants" component={() => <ProtectedRoute><TenantManagement /></ProtectedRoute>} />
       <Route path="/payment-links" component={PaymentLinksManagement} />
       <Route path="/payment-links/create" component={CreatePaymentLink} />
       <Route path="/payment/:id" component={PublicPaymentLink} />
