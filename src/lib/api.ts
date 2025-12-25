@@ -34,8 +34,9 @@ api.interceptors.response.use(
       console.log('Token exists:', !!localStorage.getItem('auth_token'));
       localStorage.removeItem('auth_token');
       localStorage.removeItem('user_data');
-      // Don't redirect if on verify-email or login page
-      if (window.location.pathname !== '/verify-email' && window.location.pathname !== '/login') {
+      // Don't redirect if on public pages (home, verify-email, login, register)
+      const publicPaths = ['/', '/verify-email', '/login', '/register', '/landing'];
+      if (!publicPaths.includes(window.location.pathname)) {
         console.log('Redirecting to login due to 401');
         window.location.href = '/login';
       }
