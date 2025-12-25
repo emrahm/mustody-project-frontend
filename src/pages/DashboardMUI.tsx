@@ -26,7 +26,6 @@ import {
 } from '@mui/icons-material';
 import DashboardLayout from '@/components/DashboardLayout';
 import MessagingWidget from '@/components/MessagingWidget';
-import QuickSendMessage from '@/components/QuickSendMessage';
 
 const StatCard = ({ title, value, change, icon, color = 'primary' }: any) => {
   const theme = useTheme();
@@ -353,10 +352,6 @@ export default function DashboardContent() {
                 </Grid>
               </CardContent>
             </Card>
-          </Grid>
-          
-          <Grid item xs={12} md={4}>
-            <QuickSendMessage />
           </Grid>
         </Grid>
       </Box>

@@ -126,7 +126,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         { id: '2', label: 'User Management', path: '/users', icon: 'People', roles: ['admin', 'owner'], order: 2 },
         { id: '3', label: 'Role Management', path: '/roles', icon: 'Security', roles: ['admin', 'owner'], order: 3 },
         { id: '4', label: 'Company Management', path: '/company', icon: 'Business', roles: ['admin', 'owner'], order: 4 },
-        { id: '5', label: 'Audit Logs', path: '/audit-logs', icon: 'Security', roles: ['admin', 'owner'], order: 5 }
+        { id: '5', label: 'Audit Logs', path: '/audit-logs', icon: 'Security', roles: ['admin', 'owner'], order: 5 },
+        { id: '7', label: 'API Keys', path: '/api-keys', icon: 'Key', roles: ['tenant_admin'], order: 7 },
+        { id: '9', label: 'Messaging', path: '/messaging', icon: 'Message', roles: [], order: 9 },
       );
     }
 
@@ -134,14 +136,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (allRoles.includes('tenant_admin')) {
       menuItems.push(
         { id: '6', label: 'Role Management', path: '/roles', icon: 'Security', roles: ['tenant_admin'], order: 6 },
-        { id: '7', label: 'API Keys', path: '/api-keys', icon: 'Key', roles: ['tenant_admin'], order: 7 },
-        { id: '8', label: 'Team Management', path: '/team', icon: 'People', roles: ['tenant_admin'], order: 8 }
+        { id: '8', label: 'Team Management', path: '/team', icon: 'People', roles: ['tenant_admin'], order: 8 },
+        { id: '9', label: 'Messaging', path: '/messaging', icon: 'Message', roles: [], order: 9 },
       );
     }
 
     // Common items for all authenticated users
-    menuItems.push(
-      { id: '9', label: 'Messaging', path: '/messaging', icon: 'Message', roles: [], order: 9 },
+    menuItems.push(      
       { id: '10', label: 'Analytics', path: '/analytics', icon: 'Analytics', roles: [], order: 10 }
     );
 
