@@ -12,6 +12,10 @@ import {
   IconButton,
   alpha,
   useTheme,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemAvatar,
 } from '@mui/material';
 import {
   TrendingUp,
@@ -23,9 +27,15 @@ import {
   MoreVert,
   ArrowUpward,
   ArrowDownward,
+  AccountBalanceWallet,
+  Business,
+  Notifications,
+  SwapHoriz,
 } from '@mui/icons-material';
 import DashboardLayout from '@/components/DashboardLayout';
-import MessagingWidget from '@/components/MessagingWidget';
+import { useAuth } from '@/contexts/AuthContext';
+import { useNotifications } from '@/contexts/NotificationContext';
+import { Link } from 'wouter';
 
 const StatCard = ({ title, value, change, icon, color = 'primary' }: any) => {
   const theme = useTheme();
@@ -39,18 +49,18 @@ const StatCard = ({ title, value, change, icon, color = 'primary' }: any) => {
             sx={{
               p: 1,
               borderRadius: 2,
-              backgroundColor: alpha(theme.palette[color].main, 0.1),
-              color: `${color}.main`,
+              bgcolor: alpha(theme.palette[color].main, 0.1),
+              color: theme.palette[color].main,
             }}
           >
             {icon}
           </Box>
           <IconButton size="small">
-            <MoreVert fontSize="small" />
+            <MoreVert />
           </IconButton>
         </Box>
         
-        <Typography variant="h4" fontWeight="bold" gutterBottom>
+        <Typography variant="h4" fontWeight="700" gutterBottom>
           {value}
         </Typography>
         
@@ -58,11 +68,11 @@ const StatCard = ({ title, value, change, icon, color = 'primary' }: any) => {
           {title}
         </Typography>
         
-        <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           {isPositive ? (
-            <ArrowUpward sx={{ fontSize: 16, color: 'success.main', mr: 0.5 }} />
+            <ArrowUpward sx={{ fontSize: 16, color: 'success.main' }} />
           ) : (
-            <ArrowDownward sx={{ fontSize: 16, color: 'error.main', mr: 0.5 }} />
+            <ArrowDownward sx={{ fontSize: 16, color: 'error.main' }} />
           )}
           <Typography
             variant="caption"
@@ -71,7 +81,10 @@ const StatCard = ({ title, value, change, icon, color = 'primary' }: any) => {
               fontWeight: 600,
             }}
           >
-            {Math.abs(change)}% from last month
+            {Math.abs(change)}%
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            vs last month
           </Typography>
         </Box>
       </CardContent>
@@ -79,276 +92,156 @@ const StatCard = ({ title, value, change, icon, color = 'primary' }: any) => {
   );
 };
 
-const SecurityAlert = ({ type, title, description, action }: any) => {
-  const theme = useTheme();
-  const severity = type === 'warning' ? 'warning' : type === 'error' ? 'error' : 'info';
-  const icon = type === 'warning' ? <Warning /> : <CheckCircle />;
-  
-  return (
-    <Box
-      sx={{
-        p: 2,
-        borderRadius: 2,
-        border: `1px solid`,
-        borderColor: `${severity}.light`,
-        backgroundColor: (theme) => alpha(theme.palette[severity].light, 0.05),
-        mb: 2,
-      }}
-    >
-      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
-        <Box sx={{ color: `${severity}.main`, mt: 0.5 }}>
-          {icon}
-        </Box>
-        <Box sx={{ flex: 1 }}>
-          <Typography variant="subtitle2" fontWeight="600" gutterBottom>
-            {title}
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            {description}
-          </Typography>
-          {action && (
-            <Button size="small" variant="outlined" color={severity as any}>
-              {action}
-            </Button>
-          )}
-        </Box>
-      </Box>
-    </Box>
-  );
-};
-
 export default function DashboardContent() {
   const theme = useTheme();
+  const { user, hasRole } = useAuth();
+  const { notifications } = useNotifications();
+
+  // Recent notifications for activities
+  const recentActivities = notifications.slice(0, 5).map(notification => ({
+    id: notification.id,
+    title: notification.title,
+    description: notification.message,
+    time: new Date(notification.created_at).toLocaleTimeString(),
+    type: notification.type,
+    isRead: notification.is_read
+  }));
+
+  // Role-based quick actions
+  const getQuickActions = () => {
+    const actions = [];
+    
+    if (hasRole('admin') || hasRole('owner')) {
+      actions.push(
+        { title: 'Manage Users', icon: <People />, path: '/users', color: 'primary' },
+        { title: 'Security Settings', icon: <Security />, path: '/security', color: 'warning' },
+        { title: 'API Keys', icon: <Key />, path: '/api-keys', color: 'info' }
+      );
+    }
+    
+    if (hasRole('tenant_admin')) {
+      actions.push(
+        { title: 'Wallet Management', icon: <AccountBalanceWallet />, path: '/wallets', color: 'success' },
+        { title: 'Team Settings', icon: <People />, path: '/team', color: 'primary' },
+        { title: 'API Keys', icon: <Key />, path: '/api-keys', color: 'info' }
+      );
+    }
+    
+    // For regular users - encourage to become tenant
+    if (!hasRole('admin') && !hasRole('owner') && !hasRole('tenant_admin')) {
+      actions.push(
+        { title: 'Become Our Tenant', icon: <Business />, path: '/tenant-request', color: 'primary' },
+        { title: 'View Wallets', icon: <AccountBalanceWallet />, path: '/wallets', color: 'success' }
+      );
+    }
+    
+    return actions;
+  };
+
+  const quickActions = getQuickActions();
 
   const stats = [
-    {
-      title: 'Total Assets Under Custody',
-      value: '$2.4M',
-      change: 12.5,
-      icon: <TrendingUp />,
-      color: 'primary',
-    },
-    {
-      title: 'Active API Keys',
-      value: '8',
-      change: 25,
-      icon: <Key />,
-      color: 'success',
-    },
-    {
-      title: 'Team Members',
-      value: '12',
-      change: 8.3,
-      icon: <People />,
-      color: 'info',
-    },
-    {
-      title: 'Security Score',
-      value: '94%',
-      change: 2.1,
-      icon: <Security />,
-      color: 'warning',
-    },
-  ];
-
-  const securityAlerts = [
-    {
-      type: 'warning',
-      title: '2FA Not Enabled',
-      description: 'Enable two-factor authentication to secure your account.',
-      action: 'Enable 2FA',
-    },
-    {
-      type: 'success',
-      title: 'All API Keys Active',
-      description: 'Your API keys are functioning properly with no issues detected.',
-    },
-  ];
-
-  const recentActivity = [
-    { action: 'API Key Created', user: 'John Doe', time: '2 hours ago', type: 'success' },
-    { action: 'Team Member Added', user: 'Jane Smith', time: '1 day ago', type: 'info' },
-    { action: 'Security Alert', user: 'System', time: '2 days ago', type: 'warning' },
+    { title: 'Total Wallets', value: '24', change: 12, icon: <AccountBalanceWallet />, color: 'primary' },
+    { title: 'Active Users', value: '1,234', change: 8, icon: <People />, color: 'success' },
+    { title: 'Security Score', value: '98%', change: 2, icon: <Security />, color: 'warning' },
+    { title: 'Total Volume', value: '$2.4M', change: 15, icon: <TrendingUp />, color: 'info' },
   ];
 
   return (
     <DashboardLayout>
-      <Box>
-        {/* Header */}
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h4" fontWeight="bold" gutterBottom>
-            Good morning, John! 👋
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Here's what's happening with your crypto custody platform today.
-          </Typography>
-        </Box>
+      <Box sx={{ flexGrow: 1, p: 3 }}>
+        <Typography variant="h4" fontWeight="600" gutterBottom>
+          Welcome back, {user?.name}!
+        </Typography>
+        
+        <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
+          Here's what's happening with your custody wallets today.
+        </Typography>
 
-        {/* Stats Grid */}
-        <Grid container spacing={3} sx={{ mb: 4 }}>
+        <Grid container spacing={3}>
+          {/* Stats Cards */}
           {stats.map((stat, index) => (
             <Grid item xs={12} sm={6} lg={3} key={index}>
               <StatCard {...stat} />
             </Grid>
           ))}
-        </Grid>
 
-        <Grid container spacing={3}>
-          {/* Security Overview */}
+          {/* Recent Activities */}
           <Grid item xs={12} lg={6}>
-            <Card>
+            <Card sx={{ height: '100%' }}>
               <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-                  <Typography variant="h6" fontWeight="600">
-                    Security Overview
-                  </Typography>
-                  <Button size="small" variant="outlined">
-                    View All
-                  </Button>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                  <Typography variant="h6">Recent Activities</Typography>
+                  <IconButton size="small">
+                    <MoreVert />
+                  </IconButton>
                 </Box>
-
-                {securityAlerts.map((alert, index) => (
-                  <SecurityAlert key={index} {...alert} />
-                ))}
-
-                <Box sx={{ mt: 3 }}>
-                  <Typography variant="subtitle2" gutterBottom>
-                    Overall Security Score
-                  </Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <LinearProgress
-                      variant="determinate"
-                      value={94}
-                      sx={{
-                        flex: 1,
-                        height: 8,
-                        borderRadius: 4,
-                        backgroundColor: alpha(theme.palette.success.main, 0.1),
-                        '& .MuiLinearProgress-bar': {
-                          backgroundColor: 'success.main',
-                          borderRadius: 4,
-                        },
-                      }}
-                    />
-                    <Typography variant="body2" fontWeight="600" color="success.main">
-                      94%
-                    </Typography>
-                  </Box>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          {/* Messaging Widget */}
-          <Grid item xs={12} lg={6}>
-            <MessagingWidget />
-          </Grid>
-
-          {/* Recent Activity */}
-          <Grid item xs={12}>
-            <Card>
-              <CardContent>
-                <Typography variant="h6" fontWeight="600" gutterBottom>
-                  Recent Activity
-                </Typography>
-
-                <Box sx={{ mt: 2 }}>
-                  {recentActivity.map((activity, index) => (
-                    <Box
-                      key={index}
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 2,
-                        py: 2,
-                        borderBottom: index < recentActivity.length - 1 ? `1px solid ${theme.palette.divider}` : 'none',
-                      }}
-                    >
-                      <Avatar
-                        sx={{
-                          width: 32,
-                          height: 32,
-                          backgroundColor: `${activity.type}.light`,
-                          color: `${activity.type}.main`,
+                <List>
+                  {recentActivities.length > 0 ? recentActivities.map((activity) => (
+                    <ListItem key={activity.id} sx={{ px: 0 }}>
+                      <ListItemAvatar>
+                        <Avatar sx={{ 
+                          bgcolor: activity.type === 'success' ? 'success.main' : 
+                                  activity.type === 'warning' ? 'warning.main' : 
+                                  activity.type === 'error' ? 'error.main' : 'info.main',
+                          width: 32, 
+                          height: 32 
+                        }}>
+                          <Notifications sx={{ fontSize: 16 }} />
+                        </Avatar>
+                      </ListItemAvatar>
+                      <ListItemText
+                        primary={activity.title}
+                        secondary={`${activity.description} • ${activity.time}`}
+                        primaryTypographyProps={{ 
+                          variant: 'body2',
+                          fontWeight: activity.isRead ? 'normal' : 'bold'
                         }}
-                      >
-                        {activity.user.charAt(0)}
-                      </Avatar>
-                      <Box sx={{ flex: 1 }}>
-                        <Typography variant="body2" fontWeight="500">
-                          {activity.action}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          by {activity.user} • {activity.time}
-                        </Typography>
-                      </Box>
-                      <Chip
-                        size="small"
-                        label={activity.type}
-                        color={activity.type as any}
-                        variant="outlined"
+                        secondaryTypographyProps={{ variant: 'caption' }}
                       />
-                    </Box>
-                  ))}
-                </Box>
-
-                <Button fullWidth variant="text" sx={{ mt: 2 }}>
-                  View All Activity
-                </Button>
+                    </ListItem>
+                  )) : (
+                    <ListItem sx={{ px: 0 }}>
+                      <ListItemText
+                        primary="No recent activities"
+                        secondary="Your activities will appear here"
+                        primaryTypographyProps={{ variant: 'body2', color: 'text.secondary' }}
+                      />
+                    </ListItem>
+                  )}
+                </List>
               </CardContent>
             </Card>
           </Grid>
-        </Grid>
 
-        {/* Quick Actions */}
-        <Grid container spacing={3} sx={{ mt: 2 }}>
-          <Grid item xs={12} md={8}>
-            <Card>
+          {/* Quick Actions */}
+          <Grid item xs={12} lg={6}>
+            <Card sx={{ height: '100%' }}>
               <CardContent>
-                <Typography variant="h6" fontWeight="600" gutterBottom>
-                  Quick Actions
-                </Typography>
-                <Grid container spacing={2} sx={{ mt: 1 }}>
-                  <Grid item xs={12} sm={6} md={3}>
-                    <Button
-                      fullWidth
-                      variant="outlined"
-                      startIcon={<Key />}
-                      sx={{ py: 1.5 }}
-                    >
-                      Create API Key
-                    </Button>
-                  </Grid>
-                  <Grid item xs={12} sm={6} md={3}>
-                    <Button
-                      fullWidth
-                      variant="outlined"
-                      startIcon={<People />}
-                      sx={{ py: 1.5 }}
-                    >
-                      Invite Team Member
-                    </Button>
-                  </Grid>
-                  <Grid item xs={12} sm={6} md={3}>
-                    <Button
-                      fullWidth
-                      variant="outlined"
-                      startIcon={<Security />}
-                      sx={{ py: 1.5 }}
-                    >
-                      Security Settings
-                    </Button>
-                  </Grid>
-                  <Grid item xs={12} sm={6} md={3}>
-                    <Button
-                      fullWidth
-                      variant="outlined"
-                      startIcon={<TrendingUp />}
-                      sx={{ py: 1.5 }}
-                    >
-                      View Analytics
-                    </Button>
-                  </Grid>
+                <Typography variant="h6" gutterBottom>Quick Actions</Typography>
+                <Grid container spacing={2}>
+                  {quickActions.map((action, index) => (
+                    <Grid item xs={12} sm={6} md={4} key={index}>
+                      <Link href={action.path}>
+                        <Button
+                          variant="outlined"
+                          fullWidth
+                          startIcon={action.icon}
+                          sx={{
+                            py: 1.5,
+                            borderColor: `${action.color}.main`,
+                            color: `${action.color}.main`,
+                            '&:hover': {
+                              borderColor: `${action.color}.dark`,
+                              backgroundColor: alpha(theme.palette[action.color].main, 0.04),
+                            }
+                          }}
+                        >
+                          {action.title}
+                        </Button>
+                      </Link>
+                    </Grid>
+                  ))}
                 </Grid>
               </CardContent>
             </Card>

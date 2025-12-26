@@ -26,10 +26,10 @@ import AuthCallback from "./pages/AuthCallback";
 import TenantRequest from "./pages/TenantRequest";
 import InvitationRegister from "./pages/InvitationRegister";
 import AuditLogs from "./pages/AuditLogs";
-import MessagingPage from "./pages/MessagingPage";
 import ApiKeyManagementPage from "./pages/ApiKeyManagementPage";
 import RoleManagement from "./pages/RoleManagement";
 import TenantManagement from "./pages/TenantManagement";
+import MessagingPage from "./pages/MessagingPage";
 import { Homepage } from "./pages/Homepage";
 import { ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -54,6 +54,7 @@ function Router() {
       <Route path="/users" component={() => <ProtectedRoute><UserManagement /></ProtectedRoute>} />
       <Route path="/roles" component={() => <ProtectedRoute><RoleManagement /></ProtectedRoute>} />
       <Route path="/tenants" component={() => <ProtectedRoute><TenantManagement /></ProtectedRoute>} />
+      <Route path="/messaging" component={() => <ProtectedRoute><MessagingPage /></ProtectedRoute>} />
       <Route path="/payment-links" component={PaymentLinksManagement} />
       <Route path="/payment-links/create" component={CreatePaymentLink} />
       <Route path="/payment/:id" component={PublicPaymentLink} />
@@ -61,7 +62,6 @@ function Router() {
       <Route path="/tenant-request" component={TenantRequest} />
       <Route path="/invitation/:token" component={InvitationRegister} />
       <Route path="/audit-logs" component={AuditLogs} />
-      <Route path="/messaging" component={MessagingPage} />
       <Route component={NotFound} />
     </Switch>
   );

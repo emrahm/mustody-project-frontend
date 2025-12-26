@@ -108,6 +108,11 @@ export const tenantAPI = {
   
   acceptInvitation: (token: string, name: string, password: string) =>
     api.post('/invitation/accept', { token, name, password }),
+
+  // Dashboard stats
+  getDashboardStats: () => api.get('/dashboard/stats'),
+  
+  getRecentActivities: () => api.get('/dashboard/activities'),
 };
 
 // API Key management endpoints
