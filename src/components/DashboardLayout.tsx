@@ -42,7 +42,9 @@ import {
 } from '@mui/icons-material';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/contexts/AuthContext';
+import { api } from '@/lib/api';
 import NotificationBell from './NotificationBell';
+import { useEffect } from 'react';
 
 const drawerWidth = 260;
 
@@ -79,7 +81,23 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const { user, menuItems, loading, logout, canAccess } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [userProfile, setUserProfile] = useState<any>(null);
   const currentPath = window.location.pathname;
+
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        const response = await api.get('/profile');
+        setUserProfile(response.data);
+      } catch (error) {
+        console.error('Failed to fetch user profile:', error);
+      }
+    };
+
+    if (user) {
+      fetchUserProfile();
+    }
+  }, [user]);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -282,6 +300,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             }}
           >
             <Avatar 
+              src={userProfile?.avatar_url ? `${import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1'}${userProfile.avatar_url}` : ''}
               sx={{ 
                 width: 36, 
                 height: 36,

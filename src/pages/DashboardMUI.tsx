@@ -199,6 +199,7 @@ export default function DashboardContent() {
     if (hasRole('admin') || hasRole('owner')) {
       actions.push(
         { title: 'Manage Users', icon: <People />, path: '/users', color: 'primary' },
+        { title: 'KYC Management', icon: <VerifiedUser />, path: '/admin/kyc', color: 'info' },
         { title: 'API Keys', icon: <Key />, path: '/api-keys', color: 'info' }
       );
     }

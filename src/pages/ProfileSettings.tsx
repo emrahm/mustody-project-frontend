@@ -55,16 +55,19 @@ export default function ProfileSettings() {
       setProfile(response.data);
     } catch (error) {
       console.error('Failed to fetch profile:', error);
-      // Set default values from user context
-      setProfile({
-        name: user?.name || '',
-        email: user?.email || '',
-        phone: user?.phone || '',
-        company: user?.company || '',
-        avatar_url: user?.avatar_url || '',
-        kyc_status: user?.kyc_status || 'pending',
-        kyc_documents: user?.kyc_documents || []
-      });
+      // Set default values from user context if API fails
+      if (user) {
+        setProfile({
+          name: user.name || '',
+          email: user.email || '',
+          phone: user.phone || '',
+          company: user.company || '',
+          avatar_url: user.avatar_url || '',
+          kyc_status: user.kyc_status || 'pending',
+          kyc_documents: user.kyc_documents || [],
+          two_factor_enabled: user.two_factor_enabled || false
+        });
+      }
     }
   };
 
@@ -91,7 +94,7 @@ export default function ProfileSettings() {
     
     setLoading(true);
     try {
-      await api.post('/profile/kyc/upload', formData, {
+      await api.post('/kyc/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       setKycDialog(false);
@@ -106,6 +109,29 @@ export default function ProfileSettings() {
     }
   };
 
+  const handleAvatarUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('avatar', file);
+
+    setLoading(true);
+    try {
+      const response = await api.post('/profile/avatar', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      
+      setProfile({ ...profile, avatar_url: response.data.avatar_url });
+      alert('Avatar uploaded successfully');
+    } catch (error) {
+      console.error('Failed to upload avatar:', error);
+      alert('Failed to upload avatar');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getKycStatusColor = (status) => {
     switch (status) {
       case 'verified': return 'success';
@@ -114,8 +140,6 @@ export default function ProfileSettings() {
       default: return 'default';
     }
   };
-
-  return (
     <DashboardLayout>
       <Box sx={{ p: 3 }}>
         <Typography variant="h4" gutterBottom>Profile Settings</Typography>
@@ -197,19 +221,30 @@ export default function ProfileSettings() {
             <Card>
               <CardContent sx={{ textAlign: 'center' }}>
                 <Avatar
-                  src={profile.avatar_url}
+                  src={profile.avatar_url ? `${import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1'}${profile.avatar_url}` : ''}
                   sx={{ width: 120, height: 120, mx: 'auto', mb: 2 }}
                 >
                   {profile.name?.charAt(0)?.toUpperCase()}
                 </Avatar>
                 
-                <Button
-                  variant="outlined"
-                  startIcon={<CloudUpload />}
-                  sx={{ mb: 3 }}
-                >
-                  Upload Photo
-                </Button>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarUpload}
+                  style={{ display: 'none' }}
+                  id="avatar-upload"
+                />
+                <label htmlFor="avatar-upload">
+                  <Button
+                    variant="outlined"
+                    startIcon={<CloudUpload />}
+                    sx={{ mb: 3 }}
+                    component="span"
+                    disabled={loading}
+                  >
+                    Upload Photo
+                  </Button>
+                </label>
                 
                 <Divider sx={{ my: 2 }} />
                 
