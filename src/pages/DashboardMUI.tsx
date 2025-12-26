@@ -179,6 +179,22 @@ export default function DashboardContent() {
       { title: 'Profile Settings', icon: <Person />, path: '/profile', color: 'primary' },
       { title: 'Account Settings', icon: <Security />, path: '/settings', color: 'warning' }
     );
+
+    // KYC and 2FA quick actions based on status
+    const kycStatus = userProfile?.kyc_status || 'pending';
+    const twoFAEnabled = userProfile?.two_factor_enabled || false;
+
+    if (kycStatus !== 'verified') {
+      actions.push(
+        { title: 'Complete KYC', icon: <VerifiedUser />, path: '/profile', color: 'error' }
+      );
+    }
+
+    if (!twoFAEnabled) {
+      actions.push(
+        { title: 'Enable 2FA', icon: <Smartphone />, path: '/settings', color: 'warning' }
+      );
+    }
     
     if (hasRole('admin') || hasRole('owner')) {
       actions.push(
@@ -302,6 +318,92 @@ export default function DashboardContent() {
                     </ListItem>
                   )}
                 </List>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* Security Status Widget */}
+          <Grid item xs={12} lg={6}>
+            <Card sx={{ height: '100%' }}>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>Security Status</Typography>
+                
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  {/* KYC Status */}
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <VerifiedUser sx={{ color: userProfile?.kyc_status === 'verified' ? 'success.main' : 'warning.main' }} />
+                      <Typography variant="body1">KYC Verification</Typography>
+                    </Box>
+                    <Chip
+                      label={userProfile?.kyc_status === 'verified' ? 'Verified' : 'Pending'}
+                      color={userProfile?.kyc_status === 'verified' ? 'success' : 'warning'}
+                      size="small"
+                    />
+                  </Box>
+                  
+                  {/* 2FA Status */}
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Shield sx={{ color: userProfile?.two_factor_enabled ? 'success.main' : 'error.main' }} />
+                      <Typography variant="body1">Two-Factor Auth</Typography>
+                    </Box>
+                    <Chip
+                      label={userProfile?.two_factor_enabled ? 'Enabled' : 'Disabled'}
+                      color={userProfile?.two_factor_enabled ? 'success' : 'error'}
+                      size="small"
+                    />
+                  </Box>
+                  
+                  {/* Overall Security Score */}
+                  <Box sx={{ mt: 2 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                      <Typography variant="body2" color="text.secondary">Security Score</Typography>
+                      <Typography variant="body2" fontWeight="bold">
+                        {((userProfile?.kyc_status === 'verified' ? 50 : 0) + (userProfile?.two_factor_enabled ? 50 : 0))}%
+                      </Typography>
+                    </Box>
+                    <LinearProgress
+                      variant="determinate"
+                      value={(userProfile?.kyc_status === 'verified' ? 50 : 0) + (userProfile?.two_factor_enabled ? 50 : 0)}
+                      sx={{
+                        height: 8,
+                        borderRadius: 4,
+                        backgroundColor: alpha(theme.palette.grey[500], 0.2),
+                        '& .MuiLinearProgress-bar': {
+                          borderRadius: 4,
+                          backgroundColor: theme.palette.success.main,
+                        },
+                      }}
+                    />
+                  </Box>
+                  
+                  {/* Action Buttons */}
+                  <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
+                    {userProfile?.kyc_status !== 'verified' && (
+                      <Link href="/profile">
+                        <Button size="small" variant="outlined" color="warning">
+                          Complete KYC
+                        </Button>
+                      </Link>
+                    )}
+                    {!userProfile?.two_factor_enabled && (
+                      <Link href="/settings">
+                        <Button size="small" variant="outlined" color="error">
+                          Enable 2FA
+                        </Button>
+                      </Link>
+                    )}
+                    {userProfile?.kyc_status === 'verified' && userProfile?.two_factor_enabled && (
+                      <Chip
+                        label="Fully Secured"
+                        color="success"
+                        icon={<CheckCircle />}
+                        sx={{ alignSelf: 'flex-start' }}
+                      />
+                    )}
+                  </Box>
+                </Box>
               </CardContent>
             </Card>
           </Grid>

@@ -82,10 +82,12 @@ export default function ProfileSettings() {
   };
 
   const handleKycUpload = async () => {
-    if (!selectedFile) return;
+    if (!selectedFile || selectedFile.length === 0) return;
     
     const formData = new FormData();
-    formData.append('document', selectedFile);
+    Array.from(selectedFile).forEach((file, index) => {
+      formData.append(`document_${index}`, file);
+    });
     
     setLoading(true);
     try {
@@ -95,10 +97,10 @@ export default function ProfileSettings() {
       setKycDialog(false);
       setSelectedFile(null);
       fetchProfile();
-      alert('KYC document uploaded successfully');
+      alert('KYC documents uploaded successfully. Review process will take 1-3 business days.');
     } catch (error) {
-      console.error('Failed to upload KYC document:', error);
-      alert('Failed to upload KYC document');
+      console.error('Failed to upload KYC documents:', error);
+      alert('Failed to upload KYC documents');
     } finally {
       setLoading(false);
     }
@@ -241,24 +243,121 @@ export default function ProfileSettings() {
         </Grid>
         
         {/* KYC Upload Dialog */}
-        <Dialog open={kycDialog} onClose={() => setKycDialog(false)} maxWidth="sm" fullWidth>
-          <DialogTitle>Upload KYC Documents</DialogTitle>
+        <Dialog open={kycDialog} onClose={() => setKycDialog(false)} maxWidth="md" fullWidth>
+          <DialogTitle>Complete KYC Verification</DialogTitle>
           <DialogContent>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Please upload a clear photo of your government-issued ID (passport, driver's license, or national ID card).
+            <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
+              Required Documents for Individual KYC:
             </Typography>
+            
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="subtitle2" color="primary" gutterBottom>
+                1. Identity Document (Required)
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                • Passport (preferred) OR National ID Card OR Driver's License
+                • Must be government-issued and valid
+                • Clear, high-resolution photo showing all details
+              </Typography>
+              
+              <Typography variant="subtitle2" color="primary" gutterBottom>
+                2. Proof of Address (Required)
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                • Utility bill (electricity, water, gas) - max 3 months old
+                • Bank statement - max 3 months old
+                • Government correspondence - max 3 months old
+                • Rental agreement (if recent)
+              </Typography>
+              
+              <Typography variant="subtitle2" color="primary" gutterBottom>
+                3. Selfie with ID (Required)
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                • Clear photo of yourself holding your ID document
+                • Both your face and ID must be clearly visible
+                • Good lighting, no shadows or glare
+              </Typography>
+            </Box>
+
+            <Typography variant="h6" gutterBottom>
+              Additional Requirements for Company/Business:
+            </Typography>
+            
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="subtitle2" color="primary" gutterBottom>
+                4. Business Registration (Required for Business)
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                • Certificate of Incorporation
+                • Business License
+                • Tax Registration Certificate
+                • Chamber of Commerce Registration
+              </Typography>
+              
+              <Typography variant="subtitle2" color="primary" gutterBottom>
+                5. Company Address Proof (Required for Business)
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                • Business utility bill - max 3 months old
+                • Commercial lease agreement
+                • Business bank statement with address
+                • Official government business correspondence
+              </Typography>
+              
+              <Typography variant="subtitle2" color="primary" gutterBottom>
+                6. Authorized Signatory Documents (Required for Business)
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                • Board resolution authorizing the signatory
+                • Power of attorney (if applicable)
+                • Authorized signatory's ID and proof of address
+                • Company stamp/seal on authorization documents
+              </Typography>
+              
+              <Typography variant="subtitle2" color="primary" gutterBottom>
+                7. Financial Information (Required for Business)
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                • Latest audited financial statements
+                • Bank statements (last 6 months)
+                • Tax returns (last 2 years)
+                • Source of funds declaration
+              </Typography>
+            </Box>
+
+            <Alert severity="info" sx={{ mb: 2 }}>
+              <Typography variant="body2">
+                <strong>Important:</strong> All documents must be in original language with certified English translation if not in English. 
+                Documents older than 3 months will not be accepted unless specified otherwise.
+              </Typography>
+            </Alert>
+
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              <Typography variant="body2">
+                <strong>Note:</strong> KYC verification and 2FA are mandatory requirements to become a tenant on our platform.
+              </Typography>
+            </Alert>
             
             <input
               type="file"
               accept="image/*,.pdf"
-              onChange={(e) => setSelectedFile(e.target.files[0])}
+              multiple
+              onChange={(e) => setSelectedFile(e.target.files)}
               style={{ width: '100%', padding: '10px', border: '1px dashed #ccc', borderRadius: '4px' }}
             />
             
-            {selectedFile && (
-              <Typography variant="body2" sx={{ mt: 1 }}>
-                Selected: {selectedFile.name}
-              </Typography>
+            {selectedFile && selectedFile.length > 0 && (
+              <Box sx={{ mt: 1 }}>
+                <Typography variant="body2" gutterBottom>
+                  Selected files ({selectedFile.length}):
+                </Typography>
+                {Array.from(selectedFile).map((file, index) => (
+                  <Typography key={index} variant="caption" display="block">
+                    • {file.name}
+                  </Typography>
+                ))}
+              </Box>
             )}
           </DialogContent>
           <DialogActions>
@@ -266,9 +365,9 @@ export default function ProfileSettings() {
             <Button
               onClick={handleKycUpload}
               variant="contained"
-              disabled={!selectedFile || loading}
+              disabled={!selectedFile || selectedFile.length === 0 || loading}
             >
-              Upload
+              Upload Documents
             </Button>
           </DialogActions>
         </Dialog>
