@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Grid,
@@ -16,6 +16,7 @@ import {
   ListItem,
   ListItemText,
   ListItemAvatar,
+  CircularProgress,
 } from '@mui/material';
 import {
   TrendingUp,
@@ -31,10 +32,15 @@ import {
   Business,
   Notifications,
   SwapHoriz,
+  Person,
+  VerifiedUser,
+  Shield,
+  Smartphone,
 } from '@mui/icons-material';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/contexts/NotificationContext';
+import { tenantAPI } from '@/lib/api';
 import { Link } from 'wouter';
 
 const StatCard = ({ title, value, change, icon, color = 'primary' }: any) => {
@@ -96,25 +102,87 @@ export default function DashboardContent() {
   const theme = useTheme();
   const { user, hasRole } = useAuth();
   const { notifications } = useNotifications();
+  const [dashboardStats, setDashboardStats] = useState(null);
+  const [recentActivities, setRecentActivities] = useState([]);
+  const [userProfile, setUserProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // Recent notifications for activities
-  const recentActivities = notifications.slice(0, 5).map(notification => ({
-    id: notification.id,
-    title: notification.title,
-    description: notification.message,
-    time: new Date(notification.created_at).toLocaleTimeString(),
-    type: notification.type,
-    isRead: notification.is_read
-  }));
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        const [statsResponse, activitiesResponse, profileResponse] = await Promise.all([
+          tenantAPI.getDashboardStats(),
+          tenantAPI.getRecentActivities(),
+          api.get('/profile').catch(() => ({ data: null }))
+        ]);
+        
+        setDashboardStats(statsResponse.data.stats);
+        setRecentActivities(activitiesResponse.data.activities);
+        setUserProfile(profileResponse.data);
+      } catch (error) {
+        console.error('Failed to fetch dashboard data:', error);
+        // Fallback to default data
+        setDashboardStats({
+          totalWallets: 0,
+          totalTransactions: 0,
+          totalVolume: "0.00",
+          activeChains: ["Ethereum", "Cosmos"],
+          securityScore: 95,
+          lastActivity: new Date().toISOString()
+        });
+        setRecentActivities([]);
+        setUserProfile(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+          <CircularProgress />
+        </Box>
+      </DashboardLayout>
+    );
+  }
+
+  // Recent notifications for activities - use backend data if available, fallback to notifications
+  const displayActivities = recentActivities.length > 0 
+    ? recentActivities.map(activity => ({
+        id: activity.id,
+        title: activity.title,
+        description: activity.description,
+        time: new Date(activity.timestamp).toLocaleTimeString(),
+        type: activity.type,
+        isRead: true
+      }))
+    : notifications.slice(0, 5).map(notification => ({
+        id: notification.id,
+        title: notification.title,
+        description: notification.message,
+        time: new Date(notification.created_at).toLocaleTimeString(),
+        type: notification.type,
+        isRead: notification.is_read
+      }));
 
   // Role-based quick actions
   const getQuickActions = () => {
     const actions = [];
     
+    // Common actions for all users
+    actions.push(
+      { title: 'Profile Settings', icon: <Person />, path: '/profile', color: 'primary' },
+      { title: 'Account Settings', icon: <Security />, path: '/settings', color: 'warning' }
+    );
+    
     if (hasRole('admin') || hasRole('owner')) {
       actions.push(
         { title: 'Manage Users', icon: <People />, path: '/users', color: 'primary' },
-        { title: 'Security Settings', icon: <Security />, path: '/security', color: 'warning' },
         { title: 'API Keys', icon: <Key />, path: '/api-keys', color: 'info' }
       );
     }
@@ -141,10 +209,34 @@ export default function DashboardContent() {
   const quickActions = getQuickActions();
 
   const stats = [
-    { title: 'Total Wallets', value: '24', change: 12, icon: <AccountBalanceWallet />, color: 'primary' },
-    { title: 'Active Users', value: '1,234', change: 8, icon: <People />, color: 'success' },
-    { title: 'Security Score', value: '98%', change: 2, icon: <Security />, color: 'warning' },
-    { title: 'Total Volume', value: '$2.4M', change: 15, icon: <TrendingUp />, color: 'info' },
+    { 
+      title: 'Total Wallets', 
+      value: dashboardStats?.totalWallets?.toString() || '0', 
+      change: 12, 
+      icon: <AccountBalanceWallet />, 
+      color: 'primary' 
+    },
+    { 
+      title: 'Total Transactions', 
+      value: dashboardStats?.totalTransactions?.toString() || '0', 
+      change: 8, 
+      icon: <SwapHoriz />, 
+      color: 'success' 
+    },
+    { 
+      title: 'Security Score', 
+      value: `${dashboardStats?.securityScore || 0}%`, 
+      change: 2, 
+      icon: <Security />, 
+      color: 'warning' 
+    },
+    { 
+      title: 'Total Volume', 
+      value: `$${dashboardStats?.totalVolume || '0.00'}`, 
+      change: 15, 
+      icon: <TrendingUp />, 
+      color: 'info' 
+    },
   ];
 
   return (
@@ -177,7 +269,7 @@ export default function DashboardContent() {
                   </IconButton>
                 </Box>
                 <List>
-                  {recentActivities.length > 0 ? recentActivities.map((activity) => (
+                  {displayActivities.length > 0 ? displayActivities.map((activity) => (
                     <ListItem key={activity.id} sx={{ px: 0 }}>
                       <ListItemAvatar>
                         <Avatar sx={{ 
