@@ -140,6 +140,8 @@ export default function ProfileSettings() {
       default: return 'default';
     }
   };
+
+  return (
     <DashboardLayout>
       <Box sx={{ p: 3 }}>
         <Typography variant="h4" gutterBottom>Profile Settings</Typography>
