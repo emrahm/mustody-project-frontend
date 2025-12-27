@@ -29,6 +29,8 @@ import {
 import DashboardLayout from '@/components/DashboardLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
+import PhoneInput, { validatePhoneNumber } from '@/components/PhoneInput';
+import CommunicationInfoManager from '@/components/CommunicationInfoManager';
 
 export default function ProfileSettings() {
   const { user } = useAuth();
@@ -44,6 +46,7 @@ export default function ProfileSettings() {
   });
   const [kycDialog, setKycDialog] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [phoneError, setPhoneError] = useState('');
 
   useEffect(() => {
     fetchProfile();
@@ -72,6 +75,14 @@ export default function ProfileSettings() {
   };
 
   const handleSave = async () => {
+    // Validate phone number before saving
+    const phoneValidation = validatePhoneNumber(profile.phone);
+    if (!phoneValidation.isValid) {
+      setPhoneError(phoneValidation.message);
+      return;
+    }
+    setPhoneError('');
+
     setLoading(true);
     try {
       await api.put('/profile', profile);
@@ -180,14 +191,15 @@ export default function ProfileSettings() {
                   </Grid>
                   
                   <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="Phone"
+                    <PhoneInput
                       value={profile.phone}
-                      onChange={(e) => setProfile({...profile, phone: e.target.value})}
-                      InputProps={{
-                        startAdornment: <Phone sx={{ mr: 1, color: 'text.secondary' }} />
+                      onChange={(phone) => {
+                        setProfile({...profile, phone});
+                        setPhoneError('');
                       }}
+                      error={!!phoneError}
+                      helperText={phoneError}
+                      label="Phone Number"
                     />
                   </Grid>
                   
@@ -216,6 +228,11 @@ export default function ProfileSettings() {
                 </Box>
               </CardContent>
             </Card>
+          </Grid>
+          
+          {/* Communication Information */}
+          <Grid item xs={12} md={8}>
+            <CommunicationInfoManager />
           </Grid>
           
           {/* Profile Picture & KYC */}
