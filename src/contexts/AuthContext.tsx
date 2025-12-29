@@ -142,9 +142,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
 
     // Common items for all authenticated users
-    menuItems.push(      
-      { id: '10', label: 'Analytics', path: '/analytics', icon: 'Analytics', roles: [], order: 10 }
-    );
+    // Analytics page removed as requested
 
     setMenuItems(menuItems.sort((a, b) => a.order - b.order));
   };

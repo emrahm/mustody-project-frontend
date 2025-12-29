@@ -16,20 +16,23 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import {
   Person,
   Email,
-  Phone,
   Business,
   CloudUpload,
   Verified,
   Warning,
 } from '@mui/icons-material';
 import DashboardLayout from '@/components/DashboardLayout';
+import styles from './ProfileSettings.module.css';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
-import PhoneInput, { validatePhoneNumber } from '@/components/PhoneInput';
 import CommunicationInfoManager from '@/components/CommunicationInfoManager';
 
 export default function ProfileSettings() {
@@ -38,18 +41,25 @@ export default function ProfileSettings() {
   const [profile, setProfile] = useState({
     name: '',
     email: '',
-    phone: '',
-    company: '',
     avatar_url: '',
     kyc_status: 'pending',
-    kyc_documents: []
+    kyc_documents: [],
+    primary_communication_preference: 'email'
   });
   const [kycDialog, setKycDialog] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
-  const [phoneError, setPhoneError] = useState('');
+  const [communicationPrefs, setCommunicationPrefs] = useState([]);
+
+  // Check if user is in main tenant (mustody) or external tenant
+  const isMainTenant = user?.members?.some(member => 
+    member.tenant?.slug === 'mustody' || member.tenant?.name === 'Mustody'
+  ) || user?.role === 'admin' || user?.role === 'owner';
+
+  const showCompanyField = !isMainTenant && !user?.members?.length;
 
   useEffect(() => {
     fetchProfile();
+    fetchCommunicationPreferences();
   }, []);
 
   const fetchProfile = async () => {
@@ -63,29 +73,31 @@ export default function ProfileSettings() {
         setProfile({
           name: user.name || '',
           email: user.email || '',
-          phone: user.phone || '',
-          company: user.company || '',
           avatar_url: user.avatar_url || '',
           kyc_status: user.kyc_status || 'pending',
           kyc_documents: user.kyc_documents || [],
-          two_factor_enabled: user.two_factor_enabled || false
+          primary_communication_preference: user.primary_communication_preference || 'email'
         });
       }
     }
   };
 
-  const handleSave = async () => {
-    // Validate phone number before saving
-    const phoneValidation = validatePhoneNumber(profile.phone);
-    if (!phoneValidation.isValid) {
-      setPhoneError(phoneValidation.message);
-      return;
+  const fetchCommunicationPreferences = async () => {
+    try {
+      const response = await api.get('/communication-info');
+      setCommunicationPrefs(response.data);
+    } catch (error) {
+      console.error('Failed to fetch communication preferences:', error);
     }
-    setPhoneError('');
+  };
 
+  const handleSave = async () => {
     setLoading(true);
     try {
-      await api.put('/profile', profile);
+      await api.put('/profile', {
+        name: profile.name,
+        primary_communication_preference: profile.primary_communication_preference
+      });
       alert('Profile updated successfully');
     } catch (error) {
       console.error('Failed to update profile:', error);
@@ -160,7 +172,7 @@ export default function ProfileSettings() {
         <Grid container spacing={3}>
           {/* Profile Information */}
           <Grid item xs={12} md={8}>
-            <Card>
+            <Card className={styles.profileCard}>
               <CardContent>
                 <Typography variant="h6" gutterBottom>Personal Information</Typography>
                 
@@ -183,36 +195,46 @@ export default function ProfileSettings() {
                       label="Email"
                       type="email"
                       value={profile.email}
-                      onChange={(e) => setProfile({...profile, email: e.target.value})}
+                      disabled
+                      helperText="Email cannot be changed"
                       InputProps={{
                         startAdornment: <Email sx={{ mr: 1, color: 'text.secondary' }} />
                       }}
                     />
                   </Grid>
                   
+                  {showCompanyField && (
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        label="Company"
+                        value={profile.company || ''}
+                        onChange={(e) => setProfile({...profile, company: e.target.value})}
+                        InputProps={{
+                          startAdornment: <Business sx={{ mr: 1, color: 'text.secondary' }} />
+                        }}
+                      />
+                    </Grid>
+                  )}
+
                   <Grid item xs={12} sm={6}>
-                    <PhoneInput
-                      value={profile.phone}
-                      onChange={(phone) => {
-                        setProfile({...profile, phone});
-                        setPhoneError('');
-                      }}
-                      error={!!phoneError}
-                      helperText={phoneError}
-                      label="Phone Number"
-                    />
-                  </Grid>
-                  
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="Company"
-                      value={profile.company}
-                      onChange={(e) => setProfile({...profile, company: e.target.value})}
-                      InputProps={{
-                        startAdornment: <Business sx={{ mr: 1, color: 'text.secondary' }} />
-                      }}
-                    />
+                    <FormControl fullWidth>
+                      <InputLabel>Primary Communication Preference</InputLabel>
+                      <Select
+                        value={profile.primary_communication_preference}
+                        onChange={(e) => setProfile({...profile, primary_communication_preference: e.target.value})}
+                        label="Primary Communication Preference"
+                      >
+                        {communicationPrefs.filter(pref => pref.is_primary).map((pref) => (
+                          <MenuItem key={pref.id} value={pref.type}>
+                            {pref.type.toUpperCase()} - {pref.value}
+                          </MenuItem>
+                        ))}
+                        <MenuItem value="email">Email</MenuItem>
+                        <MenuItem value="sms">SMS</MenuItem>
+                        <MenuItem value="phone">Phone</MenuItem>
+                      </Select>
+                    </FormControl>
                   </Grid>
                 </Grid>
                 
@@ -237,7 +259,7 @@ export default function ProfileSettings() {
           
           {/* Profile Picture & KYC */}
           <Grid item xs={12} md={4}>
-            <Card>
+            <Card className={styles.profileCard}>
               <CardContent sx={{ textAlign: 'center' }}>
                 <Avatar
                   src={profile.avatar_url ? `${import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1'}${profile.avatar_url}` : ''}
