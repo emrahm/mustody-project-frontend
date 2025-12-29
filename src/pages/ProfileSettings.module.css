@@ -6,6 +6,7 @@
 
 .profileCard {
   margin-bottom: 24px;
+  height: fit-content;
 }
 
 .avatarWrapper {
@@ -16,4 +17,15 @@
 
 .avatarButton {
   margin-top: 12px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .profileContainer {
+    padding: 8px;
+  }
+  
+  .profileCard {
+    margin-bottom: 16px;
+  }
 }

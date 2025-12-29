@@ -127,53 +127,62 @@ export default function CommunicationInfoManager() {
   return (
     <Card>
       <CardContent>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="h6">Communication Information</Typography>
+        <Typography variant="h6" sx={{ mb: 2 }}>Communication Information</Typography>
+
+        {Object.keys(groupedInfo).length === 0 ? (
+          <Alert severity="info" sx={{ mt: 2 }}>
+            No communication information added yet. Click "Add Contact Info" to get started.
+          </Alert>
+        ) : (
+          <Box sx={{ mt: 2 }}>
+            {Object.entries(groupedInfo).map(([type, infos]) => (
+              <Box key={type} sx={{ mb: 3 }}>
+                <Typography variant="subtitle1" sx={{ display: 'flex', alignItems: 'center', mb: 2, fontWeight: 600 }}>
+                  {getTypeIcon(type)}
+                  <Box sx={{ ml: 1 }}>{getTypeLabel(type)}</Box>
+                </Typography>
+                <List dense sx={{ bgcolor: 'background.paper', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
+                  {infos.map((info, index) => (
+                    <ListItem key={info.id} divider={index < infos.length - 1}>
+                      <ListItemText
+                        primary={
+                          <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                            {info.value}
+                          </Typography>
+                        }
+                        secondary={
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
+                            <Chip size="small" label={getCategoryLabel(info.category)} variant="outlined" />
+                            {info.is_verified && (
+                              <Chip
+                                size="small"
+                                icon={<Verified />}
+                                label="Verified"
+                                color="success"
+                                variant="filled"
+                              />
+                            )}
+                          </Box>
+                        }
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+              </Box>
+            ))}
+          </Box>
+        )}
+
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
           <Button
             variant="contained"
             startIcon={<Add />}
             onClick={() => setDialogOpen(true)}
+            size="medium"
           >
             Add Contact Info
           </Button>
         </Box>
-
-        {Object.keys(groupedInfo).length === 0 ? (
-          <Alert severity="info">
-            No communication information added yet. Click "Add Contact Info" to get started.
-          </Alert>
-        ) : (
-          Object.entries(groupedInfo).map(([type, infos]) => (
-            <Box key={type} sx={{ mb: 3 }}>
-              <Typography variant="subtitle1" sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                {getTypeIcon(type)}
-                <Box sx={{ ml: 1 }}>{getTypeLabel(type)}</Box>
-              </Typography>
-              <List dense>
-                {infos.map((info) => (
-                  <ListItem key={info.id} divider>
-                    <ListItemText
-                      primary={info.value}
-                      secondary={
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Chip size="small" label={getCategoryLabel(info.category)} />
-                          {info.is_verified && (
-                            <Chip
-                              size="small"
-                              icon={<Verified />}
-                              label="Verified"
-                              color="success"
-                            />
-                          )}
-                        </Box>
-                      }
-                    />
-                  </ListItem>
-                ))}
-              </List>
-            </Box>
-          ))
-        )}
 
         <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
           <DialogTitle>Add Communication Information</DialogTitle>

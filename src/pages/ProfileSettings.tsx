@@ -170,95 +170,8 @@ export default function ProfileSettings() {
         <Typography variant="h4" gutterBottom>Profile Settings</Typography>
         
         <Grid container spacing={3}>
-          {/* Profile Information */}
-          <Grid item xs={12} md={8}>
-            <Card className={styles.profileCard}>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>Personal Information</Typography>
-                
-                <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="Full Name"
-                      value={profile.name}
-                      onChange={(e) => setProfile({...profile, name: e.target.value})}
-                      InputProps={{
-                        startAdornment: <Person sx={{ mr: 1, color: 'text.secondary' }} />
-                      }}
-                    />
-                  </Grid>
-                  
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="Email"
-                      type="email"
-                      value={profile.email}
-                      disabled
-                      helperText="Email cannot be changed"
-                      InputProps={{
-                        startAdornment: <Email sx={{ mr: 1, color: 'text.secondary' }} />
-                      }}
-                    />
-                  </Grid>
-                  
-                  {showCompanyField && (
-                    <Grid item xs={12} sm={6}>
-                      <TextField
-                        fullWidth
-                        label="Company"
-                        value={profile.company || ''}
-                        onChange={(e) => setProfile({...profile, company: e.target.value})}
-                        InputProps={{
-                          startAdornment: <Business sx={{ mr: 1, color: 'text.secondary' }} />
-                        }}
-                      />
-                    </Grid>
-                  )}
-
-                  <Grid item xs={12} sm={6}>
-                    <FormControl fullWidth>
-                      <InputLabel>Primary Communication Preference</InputLabel>
-                      <Select
-                        value={profile.primary_communication_preference}
-                        onChange={(e) => setProfile({...profile, primary_communication_preference: e.target.value})}
-                        label="Primary Communication Preference"
-                      >
-                        {communicationPrefs.filter(pref => pref.is_primary).map((pref) => (
-                          <MenuItem key={pref.id} value={pref.type}>
-                            {pref.type.toUpperCase()} - {pref.value}
-                          </MenuItem>
-                        ))}
-                        <MenuItem value="email">Email</MenuItem>
-                        <MenuItem value="sms">SMS</MenuItem>
-                        <MenuItem value="phone">Phone</MenuItem>
-                      </Select>
-                    </FormControl>
-                  </Grid>
-                </Grid>
-                
-                <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
-                  <Button
-                    variant="contained"
-                    onClick={handleSave}
-                    disabled={loading}
-                    startIcon={loading ? <CircularProgress size={20} /> : null}
-                  >
-                    Save Changes
-                  </Button>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-          
-          {/* Communication Information */}
-          <Grid item xs={12} md={8}>
-            <CommunicationInfoManager />
-          </Grid>
-          
           {/* Profile Picture & KYC */}
-          <Grid item xs={12} md={4}>
+          <Grid item xs={12} lg={3}>
             <Card className={styles.profileCard}>
               <CardContent sx={{ textAlign: 'center' }}>
                 <Avatar
@@ -315,6 +228,93 @@ export default function ProfileSettings() {
                 )}
               </CardContent>
             </Card>
+          </Grid>
+
+          {/* Profile Information */}
+          <Grid item xs={12} lg={9}>
+            <Card className={styles.profileCard}>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>Personal Information</Typography>
+                
+                <Grid container spacing={2} direction="column">
+                  <Grid item>
+                    <TextField
+                      fullWidth
+                      label="Full Name"
+                      value={profile.name}
+                      onChange={(e) => setProfile({...profile, name: e.target.value})}
+                      InputProps={{
+                        startAdornment: <Person sx={{ mr: 1, color: 'text.secondary' }} />
+                      }}
+                    />
+                  </Grid>
+                  
+                  <Grid item>
+                    <TextField
+                      fullWidth
+                      label="Email"
+                      type="email"
+                      value={profile.email}
+                      disabled
+                      helperText="Email cannot be changed"
+                      InputProps={{
+                        startAdornment: <Email sx={{ mr: 1, color: 'text.secondary' }} />
+                      }}
+                    />
+                  </Grid>
+                  
+                  {showCompanyField && (
+                    <Grid item>
+                      <TextField
+                        fullWidth
+                        label="Company"
+                        value={profile.company || ''}
+                        onChange={(e) => setProfile({...profile, company: e.target.value})}
+                        InputProps={{
+                          startAdornment: <Business sx={{ mr: 1, color: 'text.secondary' }} />
+                        }}
+                      />
+                    </Grid>
+                  )}
+
+                  <Grid item>
+                    <FormControl fullWidth>
+                      <InputLabel>Communication Preference</InputLabel>
+                      <Select
+                        value={profile.primary_communication_preference}
+                        onChange={(e) => setProfile({...profile, primary_communication_preference: e.target.value})}
+                        label="Communication Preference"
+                      >
+                        {communicationPrefs.filter(pref => pref.is_primary).map((pref) => (
+                          <MenuItem key={pref.id} value={pref.type}>
+                            {pref.type.toUpperCase()} - {pref.value}
+                          </MenuItem>
+                        ))}
+                        <MenuItem value="email">Email</MenuItem>
+                        <MenuItem value="sms">SMS</MenuItem>
+                        <MenuItem value="phone">Phone</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                </Grid>
+                
+                <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
+                  <Button
+                    variant="contained"
+                    onClick={handleSave}
+                    disabled={loading}
+                    startIcon={loading ? <CircularProgress size={20} /> : null}
+                  >
+                    Save Changes
+                  </Button>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+          
+          {/* Communication Information */}
+          <Grid item xs={12}>
+            <CommunicationInfoManager />
           </Grid>
         </Grid>
         
