@@ -84,8 +84,8 @@ export default function ProfileSettings() {
 
   const fetchCommunicationPreferences = async () => {
     try {
-      const response = await api.get('/communication-info');
-      setCommunicationPrefs(response.data);
+      const response = await api.get('/profile/communication');
+      setCommunicationPrefs(response.data.data || []);
     } catch (error) {
       console.error('Failed to fetch communication preferences:', error);
     }
@@ -285,14 +285,14 @@ export default function ProfileSettings() {
                         onChange={(e) => setProfile({...profile, primary_communication_preference: e.target.value})}
                         label="Communication Preference"
                       >
-                        {communicationPrefs.filter(pref => pref.is_primary).map((pref) => (
+                        <MenuItem value="email">Email</MenuItem>
+                        <MenuItem value="sms">SMS</MenuItem>
+                        <MenuItem value="phone">Phone</MenuItem>
+                        {communicationPrefs.map((pref) => (
                           <MenuItem key={pref.id} value={pref.type}>
                             {pref.type.toUpperCase()} - {pref.value}
                           </MenuItem>
                         ))}
-                        <MenuItem value="email">Email</MenuItem>
-                        <MenuItem value="sms">SMS</MenuItem>
-                        <MenuItem value="phone">Phone</MenuItem>
                       </Select>
                     </FormControl>
                   </Grid>
