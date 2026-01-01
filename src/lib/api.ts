@@ -61,6 +61,9 @@ export const authAPI = {
   login: (email: string, password: string) =>
     api.post('/login', { email, password }),
   
+  loginWith2FA: (email: string, password: string, code: string) =>
+    api.post('/login/2fa', { email, password, code }),
+  
   refreshToken: () =>
     api.post('/refresh-token'),
   
@@ -83,10 +86,16 @@ export const authAPI = {
     api.post('/resend-verification', { email }),
   
   enable2FA: () =>
-    api.post('/2fa/enable'),
+    api.post('/account/2fa/enable'),
   
   verify2FA: (code: string) =>
-    api.post('/2fa/verify', { code }),
+    api.post('/account/2fa/verify', { code }),
+  
+  disable2FA: () =>
+    api.post('/account/2fa/disable'),
+  
+  regenerateBackupCodes: () =>
+    api.post('/account/2fa/backup-codes'),
   
   logout: () => api.post('/logout'),
   

@@ -29,7 +29,7 @@ import {
 } from '@mui/icons-material';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useAuth } from '@/contexts/AuthContext';
-import { api } from '@/lib/api';
+import { authAPI } from '@/lib/api';
 
 export default function AccountSettings() {
   const { user } = useAuth();
@@ -50,8 +50,15 @@ export default function AccountSettings() {
   });
 
   useEffect(() => {
+    // Initialize settings with user's current 2FA status
+    if (user) {
+      setSettings(prev => ({
+        ...prev,
+        two_factor_enabled: user.two_factor_enabled || false
+      }));
+    }
     fetchAccountSettings();
-  }, []);
+  }, [user]);
 
   const fetchAccountSettings = async () => {
     try {
@@ -78,7 +85,7 @@ export default function AccountSettings() {
   const handleEnable2FA = async () => {
     setLoading(true);
     try {
-      const response = await api.post('/account/2fa/enable');
+      const response = await authAPI.enable2FA();
       setQrCode(response.data.qr_code);
       setTwoFADialog(true);
     } catch (error) {
@@ -92,7 +99,7 @@ export default function AccountSettings() {
   const handleVerify2FA = async () => {
     setLoading(true);
     try {
-      await api.post('/account/2fa/verify', { code: verificationCode });
+      await authAPI.verify2FA(verificationCode);
       setSettings({ ...settings, two_factor_enabled: true });
       setTwoFADialog(false);
       setVerificationCode('');
@@ -110,7 +117,7 @@ export default function AccountSettings() {
     
     setLoading(true);
     try {
-      await api.post('/account/2fa/disable');
+      await authAPI.disable2FA();
       setSettings({ ...settings, two_factor_enabled: false });
       alert('2FA disabled successfully');
     } catch (error) {
