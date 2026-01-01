@@ -5,7 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Building, Mail, User, MessageSquare, Shield, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Building, User, MessageSquare, Shield, CheckCircle, AlertTriangle } from 'lucide-react';
 import { Link } from 'wouter';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,7 +14,6 @@ export default function TenantRequest() {
   const { user } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
-    email: '',
     company: '',
     purpose: ''
   });
@@ -163,23 +162,6 @@ export default function TenantRequest() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="example@email.com"
-                  className="pl-10"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  required
-                  disabled={!canSubmit}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
               <Label htmlFor="company">Company</Label>
               <div className="relative">
                 <Building className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
@@ -224,13 +206,6 @@ export default function TenantRequest() {
               {loading ? 'Submitting...' : canSubmit ? 'Submit Application' : 'Complete Requirements First'}
             </Button>
           </form>
-
-          <div className="mt-4 text-center text-sm text-gray-600">
-            Regular user?{' '}
-            <Link href="/register" className="text-blue-600 hover:underline">
-              Register here
-            </Link>
-          </div>
         </CardContent>
       </Card>
     </div>

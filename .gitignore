@@ -50,3 +50,12 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+
+yarn.lock
+package-lock.json
+pnpm-lock.yaml
+.yarn/*
+.yarn/install-state.gz
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/cache

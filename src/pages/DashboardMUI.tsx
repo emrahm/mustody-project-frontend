@@ -18,6 +18,7 @@ import {
   ListItemAvatar,
   CircularProgress,
 } from '@mui/material';
+import TenantRequestDialog from '@/components/TenantRequestDialog';
 import {
   TrendingUp,
   Security,
@@ -104,6 +105,7 @@ export default function DashboardContent() {
   const { notifications } = useNotifications();
   const [dashboardStats, setDashboardStats] = useState(null);
   const [recentActivities, setRecentActivities] = useState([]);
+  const [tenantDialogOpen, setTenantDialogOpen] = useState(false);
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -215,7 +217,7 @@ export default function DashboardContent() {
     // For regular users - encourage to become tenant
     if (!hasRole('admin') && !hasRole('owner') && !hasRole('tenant_admin')) {
       actions.push(
-        { title: 'Become Our Tenant', icon: <Business />, path: '/tenant-request', color: 'primary' },
+        { title: 'Become Our Tenant', icon: <Business />, onClick: () => setTenantDialogOpen(true), color: 'primary' },
         { title: 'View Wallets', icon: <AccountBalanceWallet />, path: '/wallets', color: 'success' }
       );
     }
@@ -417,11 +419,31 @@ export default function DashboardContent() {
                 <Grid container spacing={2}>
                   {quickActions.map((action, index) => (
                     <Grid item xs={12} sm={6} md={4} key={index}>
-                      <Link href={action.path}>
+                      {action.path ? (
+                        <Link href={action.path}>
+                          <Button
+                            variant="outlined"
+                            fullWidth
+                            startIcon={action.icon}
+                            sx={{
+                              py: 1.5,
+                              borderColor: `${action.color}.main`,
+                              color: `${action.color}.main`,
+                              '&:hover': {
+                                borderColor: `${action.color}.dark`,
+                                backgroundColor: alpha(theme.palette[action.color].main, 0.04),
+                              }
+                            }}
+                          >
+                            {action.title}
+                          </Button>
+                        </Link>
+                      ) : (
                         <Button
                           variant="outlined"
                           fullWidth
                           startIcon={action.icon}
+                          onClick={action.onClick}
                           sx={{
                             py: 1.5,
                             borderColor: `${action.color}.main`,
@@ -434,7 +456,7 @@ export default function DashboardContent() {
                         >
                           {action.title}
                         </Button>
-                      </Link>
+                      )}
                     </Grid>
                   ))}
                 </Grid>
@@ -443,6 +465,11 @@ export default function DashboardContent() {
           </Grid>
         </Grid>
       </Box>
+      
+      <TenantRequestDialog 
+        open={tenantDialogOpen} 
+        onClose={() => setTenantDialogOpen(false)} 
+      />
     </DashboardLayout>
   );
 }
