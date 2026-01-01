@@ -27,6 +27,7 @@ import { useLocation } from 'wouter';
 import { authAPI } from '@/lib/api';
 import { getErrorMessage, getErrorDetails } from '@/lib/errorUtils';
 import { useAuth } from '@/contexts/AuthContext';
+import TwoFactorDialog from '@/components/TwoFactorDialog';
 
 const schema = yup.object({
   email: yup.string().email('Invalid email').required('Email is required'),
@@ -44,6 +45,9 @@ export default function LoginMUI() {
   const [error, setError] = useState('');
   const [emailVerificationNeeded, setEmailVerificationNeeded] = useState(false);
   const [userEmail, setUserEmail] = useState('');
+  const [requires2FA, setRequires2FA] = useState(false);
+  const [twoFactorError, setTwoFactorError] = useState('');
+  const [loginData, setLoginData] = useState({ email: '', password: '' });
 
   const {
     control,
@@ -84,15 +88,50 @@ export default function LoginMUI() {
       if (errorMessage.includes('email not verified') || errorMessage.includes('verify your email')) {
         setLocation(`/verify-email?email=${encodeURIComponent(data.email)}`);
         return;
-      } else {
-        // Show detailed error message with correlation ID if available
-        const displayMessage = errorDetails.correlationId 
-          ? `${errorMessage} (ID: ${errorDetails.correlationId})`
-          : errorMessage;
-        setError(displayMessage);
       }
+      
+      // Check if 2FA is required
+      if (errorMessage === '2fa_required' || errorMessage.includes('2fa_required')) {
+        setLoginData({ email: data.email, password: data.password });
+        setRequires2FA(true);
+        setTwoFactorError('');
+        return;
+      }
+      
+      // Show detailed error message with correlation ID if available
+      const displayMessage = errorDetails.correlationId 
+        ? `${errorMessage} (ID: ${errorDetails.correlationId})`
+        : errorMessage;
+      setError(displayMessage);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handle2FAVerify = async (code: string) => {
+    try {
+      const response = await authAPI.loginWith2FA(loginData.email, loginData.password, code);
+      
+      // Store token and user data from login response
+      await login(response.data.token, response.data.user);
+      
+      console.log('2FA Login successful:', response.data);
+      setLocation('/dashboard');
+    } catch (error: any) {
+      console.error('2FA Login error:', error);
+      
+      const errorMessage = getErrorMessage(error);
+      
+      // Handle specific 2FA errors according to backend documentation
+      if (errorMessage.includes('invalid 2FA code') || errorMessage === 'invalid 2FA code') {
+        setTwoFactorError('Invalid 2FA code. Please try again.');
+      } else if (errorMessage.includes('invalid credentials')) {
+        setTwoFactorError('Invalid credentials. Please try logging in again.');
+      } else {
+        setTwoFactorError(errorMessage);
+      }
+      
+      throw error; // Re-throw to keep dialog open
     }
   };
 
@@ -292,6 +331,13 @@ export default function LoginMUI() {
           </Typography>
         </CardContent>
       </Card>
+
+      <TwoFactorDialog
+        open={requires2FA}
+        onClose={() => setRequires2FA(false)}
+        onVerify={handle2FAVerify}
+        error={twoFactorError}
+      />
     </Box>
   );
 }

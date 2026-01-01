@@ -64,6 +64,9 @@ export const authAPI = {
   loginWith2FA: (email: string, password: string, code: string) =>
     api.post('/login/2fa', { email, password, code }),
   
+  logout: () =>
+    api.post('/logout'),
+  
   refreshToken: () =>
     api.post('/refresh-token'),
   

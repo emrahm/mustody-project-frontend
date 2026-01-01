@@ -3,22 +3,23 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Eye, EyeOff, Lock, Mail, Shield } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import { authAPI } from '@/lib/api';
+import TwoFactorDialog from '@/components/TwoFactorDialog';
 
 export default function Login() {
   const [, setLocation] = useLocation();
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
-    password: '',
-    code: ''
+    password: ''
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [emailVerificationNeeded, setEmailVerificationNeeded] = useState(false);
   const [requires2FA, setRequires2FA] = useState(false);
+  const [twoFactorError, setTwoFactorError] = useState('');
 
   const handleSocialLogin = (provider: 'google' | 'github') => {
     const clientId = provider === 'google' 
@@ -46,15 +47,8 @@ export default function Login() {
     setEmailVerificationNeeded(false);
     
     try {
-      let response;
-      
-      if (requires2FA) {
-        // Use 2FA login endpoint
-        response = await authAPI.loginWith2FA(formData.email, formData.password, formData.code);
-      } else {
-        // Use regular login endpoint
-        response = await authAPI.login(formData.email, formData.password);
-      }
+      // Use regular login endpoint
+      const response = await authAPI.login(formData.email, formData.password);
       
       // Store the token and user data
       localStorage.setItem('auth_token', response.data.token);
@@ -76,19 +70,41 @@ export default function Login() {
       // Check if 2FA is required
       if (errorMessage === '2fa_required' || errorMessage.includes('2fa_required')) {
         setRequires2FA(true);
-        setError('Please enter your 2FA code to continue.');
-        return;
-      }
-      
-      // Handle invalid 2FA code
-      if (errorMessage.includes('invalid 2fa code') || errorMessage.includes('invalid code')) {
-        setError('Invalid 2FA code. Please try again.');
+        setTwoFactorError('');
         return;
       }
       
       setError(errorMessage);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handle2FAVerify = async (code: string) => {
+    try {
+      const response = await authAPI.loginWith2FA(formData.email, formData.password, code);
+      
+      // Store the token and user data
+      localStorage.setItem('auth_token', response.data.token);
+      localStorage.setItem('user_data', JSON.stringify(response.data.user));
+      
+      console.log('2FA Login successful:', response.data);
+      setLocation('/dashboard');
+    } catch (error: any) {
+      console.error('2FA Login error:', error);
+      
+      const errorMessage = error.response?.data?.error || 'Invalid 2FA code. Please try again.';
+      
+      // Handle specific 2FA errors according to backend documentation
+      if (errorMessage.includes('invalid 2FA code') || errorMessage === 'invalid 2FA code') {
+        setTwoFactorError('Invalid 2FA code. Please try again.');
+      } else if (errorMessage.includes('invalid credentials')) {
+        setTwoFactorError('Invalid credentials. Please try logging in again.');
+      } else {
+        setTwoFactorError(errorMessage);
+      }
+      
+      throw error; // Re-throw to keep dialog open
     }
   };
 
@@ -118,15 +134,8 @@ export default function Login() {
 
         <Card className="shadow-lg">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl">
-              {requires2FA ? 'Two-Factor Authentication' : 'Welcome Back'}
-            </CardTitle>
-            <CardDescription>
-              {requires2FA 
-                ? 'Enter your 2FA code to complete sign in'
-                : 'Sign in to your account to continue'
-              }
-            </CardDescription>
+            <CardTitle className="text-2xl">Welcome Back</CardTitle>
+            <CardDescription>Sign in to your account to continue</CardDescription>
           </CardHeader>
           <CardContent>
             {error && (
@@ -168,7 +177,6 @@ export default function Login() {
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     required
-                    disabled={requires2FA}
                   />
                 </div>
               </div>
@@ -187,7 +195,6 @@ export default function Login() {
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     required
-                    disabled={requires2FA}
                   />
                   <button
                     type="button"
@@ -199,69 +206,22 @@ export default function Login() {
                 </div>
               </div>
 
-              {requires2FA && (
-                <div className="space-y-2">
-                  <Label htmlFor="code">
-                    2FA Code
-                  </Label>
-                  <div className="relative">
-                    <Shield className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                    <Input
-                      id="code"
-                      type="text"
-                      placeholder="Enter your 6-digit code"
-                      className="pl-10"
-                      value={formData.code}
-                      onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                      required
-                      maxLength={6}
-                      pattern="[0-9]{6}"
-                    />
-                  </div>
-                  <p className="text-sm text-gray-600">
-                    Enter the 6-digit code from your authenticator app or use a backup code.
-                  </p>
-                </div>
-              )}
-
-              {!requires2FA && (
-                <div className="flex items-center justify-between">
-                  <label className="flex items-center">
-                    <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-                    <span className="ml-2 text-sm text-gray-600">Remember me</span>
-                  </label>
-                  <Link href="/forgot-password" className="text-sm text-blue-600 hover:text-blue-500">
-                    Forgot password?
-                  </Link>
-                </div>
-              )}
-
-              {requires2FA && (
-                <div className="flex items-center justify-between">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setRequires2FA(false);
-                      setFormData({ ...formData, code: '' });
-                      setError('');
-                    }}
-                  >
-                    ← Back to Login
-                  </Button>
-                  <Link href="/forgot-password" className="text-sm text-blue-600 hover:text-blue-500">
-                    Lost your device?
-                  </Link>
-                </div>
-              )}
+              <div className="flex items-center justify-between">
+                <label className="flex items-center">
+                  <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                  <span className="ml-2 text-sm text-gray-600">Remember me</span>
+                </label>
+                <Link href="/forgot-password" className="text-sm text-blue-600 hover:text-blue-500">
+                  Forgot password?
+                </Link>
+              </div>
 
               <Button 
                 type="submit" 
                 className="w-full bg-blue-600 hover:bg-blue-700"
                 disabled={loading}
               >
-                {loading ? 'Signing in...' : requires2FA ? 'Verify & Sign In' : 'Sign In'}
+                {loading ? 'Signing in...' : 'Sign In'}
               </Button>
 
               {!requires2FA && (
@@ -313,6 +273,13 @@ export default function Login() {
           <p>© 2026 Mustody. All rights reserved.</p>
         </div>
       </div>
+
+      <TwoFactorDialog
+        open={requires2FA}
+        onClose={() => setRequires2FA(false)}
+        onVerify={handle2FAVerify}
+        error={twoFactorError}
+      />
     </div>
   );
 }

@@ -33,7 +33,7 @@ interface AuthContextType {
   menuItems: MenuItem[];
   loading: boolean;
   login: (token: string, userData?: User) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   hasRole: (role: string) => boolean;
   canAccess: (requiredRoles: string[]) => boolean;
 }
@@ -212,11 +212,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setLoading(false);
   };
 
-  const logout = () => {
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('user_data');
-    setUser(null);
-    setMenuItems([]);
+  const logout = async () => {
+    try {
+      // Call logout API to invalidate token on server
+      await authAPI.logout();
+    } catch (error) {
+      console.error('Logout API call failed:', error);
+      // Continue with local logout even if API call fails
+    } finally {
+      // Always clear local storage and state
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('user_data');
+      setUser(null);
+      setMenuItems([]);
+    }
   };
 
   const hasRole = (role: string): boolean => {

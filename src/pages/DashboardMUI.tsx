@@ -183,8 +183,8 @@ export default function DashboardContent() {
     );
 
     // KYC and 2FA quick actions based on status
-    const kycStatus = userProfile?.kyc_status || 'pending';
-    const twoFAEnabled = userProfile?.two_factor_enabled || false;
+    const kycStatus = user?.kyc_status || 'not_started';
+    const twoFAEnabled = user?.two_factor_enabled || false;
 
     if (kycStatus !== 'verified') {
       actions.push(
@@ -335,12 +335,12 @@ export default function DashboardContent() {
                   {/* KYC Status */}
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <VerifiedUser sx={{ color: userProfile?.kyc_status === 'verified' ? 'success.main' : 'warning.main' }} />
+                      <VerifiedUser sx={{ color: user?.kyc_status === 'verified' ? 'success.main' : 'warning.main' }} />
                       <Typography variant="body1">KYC Verification</Typography>
                     </Box>
                     <Chip
-                      label={userProfile?.kyc_status === 'verified' ? 'Verified' : 'Pending'}
-                      color={userProfile?.kyc_status === 'verified' ? 'success' : 'warning'}
+                      label={user?.kyc_status === 'verified' ? 'Verified' : user?.kyc_status?.toUpperCase() || 'NOT STARTED'}
+                      color={user?.kyc_status === 'verified' ? 'success' : 'warning'}
                       size="small"
                     />
                   </Box>
@@ -348,12 +348,12 @@ export default function DashboardContent() {
                   {/* 2FA Status */}
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Shield sx={{ color: userProfile?.two_factor_enabled ? 'success.main' : 'error.main' }} />
+                      <Shield sx={{ color: user?.two_factor_enabled ? 'success.main' : 'error.main' }} />
                       <Typography variant="body1">Two-Factor Auth</Typography>
                     </Box>
                     <Chip
-                      label={userProfile?.two_factor_enabled ? 'Enabled' : 'Disabled'}
-                      color={userProfile?.two_factor_enabled ? 'success' : 'error'}
+                      label={user?.two_factor_enabled ? 'Enabled' : 'Disabled'}
+                      color={user?.two_factor_enabled ? 'success' : 'error'}
                       size="small"
                     />
                   </Box>
@@ -363,12 +363,12 @@ export default function DashboardContent() {
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
                       <Typography variant="body2" color="text.secondary">Security Score</Typography>
                       <Typography variant="body2" fontWeight="bold">
-                        {((userProfile?.kyc_status === 'verified' ? 50 : 0) + (userProfile?.two_factor_enabled ? 50 : 0))}%
+                        {((user?.kyc_status === 'verified' ? 50 : 0) + (user?.two_factor_enabled ? 50 : 0))}%
                       </Typography>
                     </Box>
                     <LinearProgress
                       variant="determinate"
-                      value={(userProfile?.kyc_status === 'verified' ? 50 : 0) + (userProfile?.two_factor_enabled ? 50 : 0)}
+                      value={(user?.kyc_status === 'verified' ? 50 : 0) + (user?.two_factor_enabled ? 50 : 0)}
                       sx={{
                         height: 8,
                         borderRadius: 4,
@@ -383,21 +383,21 @@ export default function DashboardContent() {
                   
                   {/* Action Buttons */}
                   <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
-                    {userProfile?.kyc_status !== 'verified' && (
+                    {user?.kyc_status !== 'verified' && (
                       <Link href="/profile">
                         <Button size="small" variant="outlined" color="warning">
                           Complete KYC
                         </Button>
                       </Link>
                     )}
-                    {!userProfile?.two_factor_enabled && (
+                    {!user?.two_factor_enabled && (
                       <Link href="/settings">
                         <Button size="small" variant="outlined" color="error">
                           Enable 2FA
                         </Button>
                       </Link>
                     )}
-                    {userProfile?.kyc_status === 'verified' && userProfile?.two_factor_enabled && (
+                    {user?.kyc_status === 'verified' && user?.two_factor_enabled && (
                       <Chip
                         label="Fully Secured"
                         color="success"
