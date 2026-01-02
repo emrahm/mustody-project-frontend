@@ -1,4 +1,4 @@
-# Google OAuth Setup Instructions
+# Social Login Setup Instructions (Unified Service)
 
 ## Backend Configuration
 
@@ -12,8 +12,12 @@ GOOGLE_CLIENT_ID=your_google_client_id_here.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=your_google_client_secret_here
 
 # OAuth Redirect URLs
-GOOGLE_REDIRECT_URL_DEV=http://localhost:3000/auth/callback
-GOOGLE_REDIRECT_URL_PROD=https://yourdomain.com/auth/callback
+GOOGLE_REDIRECT_URL_DEV=http://localhost:3000/auth/callback?provider=google
+GOOGLE_REDIRECT_URL_PROD=https://yourdomain.com/auth/callback?provider=google
+
+# Future: GitHub OAuth (when needed)
+# GITHUB_CLIENT_ID=your_github_client_id_here
+# GITHUB_CLIENT_SECRET=your_github_client_secret_here
 ```
 
 ### 2. Required Go Dependencies
@@ -25,23 +29,23 @@ go get golang.org/x/oauth2
 go get golang.org/x/oauth2/google
 ```
 
-### 3. Update Server Routes
+### 3. Server Routes (Already Added)
 
-Add these routes to your server setup (usually in `internal/server/server.go` or similar):
+The unified social login routes are:
 
 ```go
-// Add to your auth routes group
-authGroup.GET("/google", authController.GoogleLogin)
-authGroup.GET("/google/callback", authController.GoogleCallback)
+// Unified social login routes
+authGroup.GET("/social/url", authController.SocialAuthURL)
+authGroup.GET("/social/callback", authController.SocialCallback)
 ```
 
-### 4. Update Controller Initialization
+### 4. Controller Initialization (Already Updated)
 
-Update your auth controller initialization to include the Google OAuth service:
+The auth controller now uses the unified social login service:
 
 ```go
-googleOAuthService := services.NewGoogleOAuthService()
-authController := controllers.NewAuthController(authService, jwtManager, googleOAuthService)
+socialLoginService := services.NewSocialLoginService()
+authController := controllers.NewAuthController(authService, jwtManager, socialLoginService)
 ```
 
 ## Frontend Configuration
@@ -60,6 +64,26 @@ VITE_GOOGLE_CLIENT_ID=your_prod_google_client_id_here.apps.googleusercontent.com
 VITE_REDIRECT_URI=https://yourdomain.com/auth/callback
 ```
 
+## New Unified API Endpoints
+
+### 1. Get OAuth URL
+```
+GET /auth/social/url?provider=google
+Response: { "auth_url": "...", "state": "..." }
+```
+
+### 2. Handle OAuth Callback
+```
+GET /auth/social/callback?provider=google&code=...&state=...
+Response: { "token": "...", "user": {...}, "expires_in": 3600 }
+```
+
+### 3. Direct Social Login (Enhanced)
+```
+POST /auth/login/social
+Body: { "provider": "google", "provider_id": "...", "email": "...", "name": "...", "avatar_url": "..." }
+```
+
 ## Google Cloud Console Setup
 
 ### 1. Create Google Cloud Project
@@ -72,8 +96,8 @@ VITE_REDIRECT_URI=https://yourdomain.com/auth/callback
 2. Click "Create Credentials" > "OAuth 2.0 Client IDs"
 3. Choose "Web application"
 4. Add authorized redirect URIs:
-   - Development: `http://localhost:3000/auth/callback`
-   - Production: `https://yourdomain.com/auth/callback`
+   - Development: `http://localhost:3000/auth/callback?provider=google`
+   - Production: `https://yourdomain.com/auth/callback?provider=google`
 5. Save and copy the Client ID and Client Secret
 
 ### 3. Configure OAuth Consent Screen
@@ -87,6 +111,29 @@ VITE_REDIRECT_URI=https://yourdomain.com/auth/callback
    - `userinfo.email`
    - `userinfo.profile`
 5. Add test users if in development mode
+
+## Adding GitHub (Future)
+
+When you want to add GitHub login:
+
+### 1. Backend Changes
+1. Add GitHub OAuth config to `SocialLoginService`
+2. Add GitHub case to switch statements in `GetAuthURL` and `ExchangeCodeForUserInfo`
+3. No route changes needed!
+
+### 2. Frontend Changes
+1. Call `socialLoginService.initiateLogin('github')`
+2. Add GitHub button to login page
+
+### 3. Environment Variables
+```bash
+# Backend
+GITHUB_CLIENT_ID=your_github_client_id
+GITHUB_CLIENT_SECRET=your_github_client_secret
+
+# Frontend
+VITE_GITHUB_CLIENT_ID=your_github_client_id
+```
 
 ## Development vs Production Configuration
 
@@ -121,10 +168,17 @@ npm run dev
 3. Complete Google OAuth flow
 4. Should redirect to dashboard with user logged in
 
+## Benefits of Unified Service
+
+1. **Extensible**: Easy to add new providers (GitHub, Facebook, etc.)
+2. **Consistent**: Single API pattern for all social providers
+3. **Maintainable**: One service manages all social authentication
+4. **Future-ready**: Adding new providers requires minimal changes
+
 ## Security Notes
 
 1. **Never commit secrets**: Keep `.env` files in `.gitignore`
-2. **Use HTTPS in production**: Google OAuth requires HTTPS for production
+2. **Use HTTPS in production**: OAuth requires HTTPS for production
 3. **Validate state parameter**: Backend validates CSRF state token
 4. **Secure cookies**: OAuth state stored in HTTP-only cookies
 5. **Token expiration**: JWT tokens have configurable expiration
@@ -137,6 +191,7 @@ npm run dev
 2. **"invalid_client"**: Verify Client ID and Secret are correct
 3. **CORS errors**: Ensure backend ALLOWED_ORIGINS includes frontend URL
 4. **State mismatch**: Clear browser cookies and try again
+5. **"unsupported provider"**: Ensure provider parameter is correct (google/github)
 
 ### Debug Steps:
 
@@ -144,3 +199,4 @@ npm run dev
 2. Check backend logs for OAuth errors
 3. Verify environment variables are loaded correctly
 4. Test with Google OAuth Playground for API issues
+5. Verify provider parameter in URL matches backend expectations

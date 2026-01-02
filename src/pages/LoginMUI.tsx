@@ -28,7 +28,7 @@ import { authAPI } from '@/lib/api';
 import { getErrorMessage, getErrorDetails } from '@/lib/errorUtils';
 import { useAuth } from '@/contexts/AuthContext';
 import TwoFactorDialog from '@/components/TwoFactorDialog';
-import { googleOAuthService } from '@/lib/googleAuth';
+import { socialLoginService } from '@/lib/socialAuth';
 
 const schema = yup.object({
   email: yup.string().email('Invalid email').required('Email is required'),
@@ -154,10 +154,14 @@ export default function LoginMUI() {
     try {
       setLoading(true);
       setError('');
-      await googleOAuthService.initiateLogin();
+      
+      console.log('Initiating Google login...');
+      console.log('Service configured:', socialLoginService.isConfigured());
+      
+      await socialLoginService.initiateLogin('google');
     } catch (error: any) {
       console.error('Google login error:', error);
-      setError('Failed to start Google login process');
+      setError(error.message || 'Failed to start Google login process');
       setLoading(false);
     }
   };
@@ -234,16 +238,18 @@ export default function LoginMUI() {
           <Button
             fullWidth
             variant="outlined"
+            size="large"
             startIcon={<Google />}
             onClick={handleGoogleSignIn}
+            disabled={loading}
             sx={{ mb: 3 }}
           >
             Continue with Google
           </Button>
 
-          <Divider sx={{ mb: 3 }}>
+          <Divider sx={{ my: 2 }}>
             <Typography variant="body2" color="text.secondary">
-              Or continue with email
+              or continue with email
             </Typography>
           </Divider>
 
@@ -326,27 +332,9 @@ export default function LoginMUI() {
               variant="contained"
               size="large"
               disabled={loading}
-              sx={{ mb: 2 }}
-            >
-              {loading ? 'Signing in...' : 'Sign In'}
-            </Button>
-
-            <Divider sx={{ my: 2 }}>
-              <Typography variant="body2" color="text.secondary">
-                or
-              </Typography>
-            </Divider>
-
-            <Button
-              fullWidth
-              variant="outlined"
-              size="large"
-              startIcon={<Google />}
-              onClick={handleGoogleLogin}
-              disabled={loading || !googleOAuthService.isConfigured()}
               sx={{ mb: 3 }}
             >
-              Continue with Google
+              {loading ? 'Signing in...' : 'Sign In'}
             </Button>
           </form>
 
