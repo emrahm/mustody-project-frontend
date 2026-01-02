@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Generate Favicon</title>
+</head>
+<body>
+    <canvas id="favicon" width="32" height="32"></canvas>
+    <script>
+        const canvas = document.getElementById('favicon');
+        const ctx = canvas.getContext('2d');
+        
+        // Background
+        ctx.fillStyle = '#1a1a2e';
+        ctx.fillRect(0, 0, 32, 32);
+        
+        // "M" vault structure
+        ctx.fillStyle = '#00d4ff';
+        // Left pillar
+        ctx.fillRect(6, 8, 3, 16);
+        // Right pillar  
+        ctx.fillRect(23, 8, 3, 16);
+        // Top bar
+        ctx.fillRect(6, 8, 20, 2);
+        // Middle bars
+        ctx.fillRect(9, 14, 14, 1);
+        ctx.fillRect(11, 18, 10, 1);
+        
+        // Crypto symbol
+        ctx.fillStyle = '#ffd700';
+        ctx.font = '8px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('₿', 16, 28);
+        
+        // Vault lock
+        ctx.fillStyle = '#00d4ff';
+        ctx.beginPath();
+        ctx.arc(16, 15, 1, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Convert to data URL and download
+        const dataURL = canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.download = 'favicon.png';
+        link.href = dataURL;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    </script>
+</body>
+</html>

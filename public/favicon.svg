@@ -1,0 +1,23 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="32" height="32" fill="#1a1a2e"/>
+  
+  <!-- M vault structure -->
+  <g fill="#00d4ff">
+    <!-- Left pillar -->
+    <rect x="6" y="8" width="3" height="16"/>
+    <!-- Right pillar -->
+    <rect x="23" y="8" width="3" height="16"/>
+    <!-- Top bar -->
+    <rect x="6" y="8" width="20" height="2"/>
+    <!-- Middle bars -->
+    <rect x="9" y="14" width="14" height="1"/>
+    <rect x="11" y="18" width="10" height="1"/>
+  </g>
+  
+  <!-- Crypto symbol -->
+  <text x="16" y="28" fill="#ffd700" font-size="8" text-anchor="middle" font-family="Arial">₿</text>
+  
+  <!-- Vault lock -->
+  <circle cx="16" cy="15" r="1" fill="#00d4ff"/>
+</svg>
