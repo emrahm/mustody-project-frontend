@@ -345,7 +345,7 @@ export default function LandingPage() {
             <div>
               <h3 className="font-semibold mb-4">Company</h3>
               <ul className="space-y-2 text-gray-400">
-                <li><a href="#" className="hover:text-white">About</a></li>
+                <li><a href="/about" className="hover:text-white">About</a></li>
                 <li><a href="#" className="hover:text-white">Careers</a></li>
                 <li><a href="#" className="hover:text-white">Blog</a></li>
                 <li><a href="#" className="hover:text-white">Contact</a></li>
@@ -362,7 +362,14 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="border-t border-gray-800 mt-12 pt-8 text-center text-gray-400">
-            <p>&copy; 2024 Mustody. All rights reserved.</p>
+            <div className="mb-4">
+              <p className="font-semibold text-white mb-2">MUSTODY TECHNOLOGY LTD</p>
+              <p>Company Number: 14852747</p>
+              <p>2nd Floor College House, 17 King Edwards Road</p>
+              <p>Ruislip, London, United Kingdom, HA4 7AE</p>
+              <p className="mt-2 text-sm">Private Limited Company | Incorporated: 8 May 2023</p>
+            </div>
+            <p>&copy; 2024 Mustody Technology Ltd. All rights reserved.</p>
           </div>
         </div>
       </footer>

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mustody Logo Generator</title>
+    <style>
+        body { margin: 0; padding: 20px; font-family: Arial, sans-serif; }
+        canvas { border: 1px solid #ccc; margin: 10px; }
+        .controls { margin: 20px 0; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Mustody Logo Generator</h1>
+    <div class="controls">
+        <button onclick="generateLogo()">Generate Logo</button>
+        <button onclick="downloadPNG()">Download PNG</button>
+        <button onclick="downloadICO()">Download ICO</button>
+    </div>
+    
+    <!-- Main Logo Canvas -->
+    <canvas id="logoCanvas" width="400" height="400"></canvas>
+    
+    <!-- Favicon Canvas -->
+    <canvas id="faviconCanvas" width="32" height="32"></canvas>
+
+    <script>
+        function generateLogo() {
+            // Main logo
+            const canvas = document.getElementById('logoCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Background gradient
+            const gradient = ctx.createLinearGradient(0, 0, 400, 400);
+            gradient.addColorStop(0, '#1a1a2e');
+            gradient.addColorStop(1, '#16213e');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 400, 400);
+            
+            // Main "M" shape with crypto vault design
+            ctx.fillStyle = '#00d4ff';
+            ctx.beginPath();
+            // Left pillar
+            ctx.rect(80, 120, 40, 200);
+            // Right pillar
+            ctx.rect(280, 120, 40, 200);
+            // Top connecting bar (vault door)
+            ctx.rect(80, 120, 240, 30);
+            // Middle connecting bars (vault mechanism)
+            ctx.rect(120, 180, 160, 20);
+            ctx.rect(140, 220, 120, 20);
+            ctx.fill();
+            
+            // Crypto symbols inside the "M"
+            ctx.fillStyle = '#ffd700';
+            ctx.font = 'bold 24px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('₿', 150, 280);
+            ctx.fillText('Ξ', 200, 280);
+            ctx.fillText('◊', 250, 280);
+            
+            // "MIRACLE" text (sarcastic)
+            ctx.fillStyle = '#ff6b6b';
+            ctx.font = 'italic 16px Arial';
+            ctx.fillText('"MIRACLE"', 200, 100);
+            
+            // Company name
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 32px Arial';
+            ctx.fillText('MUSTODY', 200, 360);
+            
+            // Subtitle
+            ctx.fillStyle = '#888888';
+            ctx.font = '14px Arial';
+            ctx.fillText('CRYPTO CUSTODY PLATFORM', 200, 380);
+            
+            // Vault lock symbol
+            ctx.fillStyle = '#00d4ff';
+            ctx.beginPath();
+            ctx.arc(200, 200, 15, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.fillStyle = '#1a1a2e';
+            ctx.beginPath();
+            ctx.arc(200, 200, 8, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // Generate favicon
+            generateFavicon();
+        }
+        
+        function generateFavicon() {
+            const canvas = document.getElementById('faviconCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, 32, 32);
+            
+            // Background
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, 32, 32);
+            
+            // Simple "M" for favicon
+            ctx.fillStyle = '#00d4ff';
+            ctx.beginPath();
+            // Left pillar
+            ctx.rect(6, 8, 4, 16);
+            // Right pillar
+            ctx.rect(22, 8, 4, 16);
+            // Top bar
+            ctx.rect(6, 8, 20, 3);
+            // Middle bars
+            ctx.rect(10, 14, 12, 2);
+            ctx.rect(12, 18, 8, 2);
+            ctx.fill();
+            
+            // Small crypto symbol
+            ctx.fillStyle = '#ffd700';
+            ctx.font = '8px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('₿', 16, 28);
+        }
+        
+        function downloadPNG() {
+            const canvas = document.getElementById('logoCanvas');
+            const link = document.createElement('a');
+            link.download = 'mustody-logo.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+        
+        function downloadICO() {
+            const canvas = document.getElementById('faviconCanvas');
+            const link = document.createElement('a');
+            link.download = 'mustody-favicon.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+        
+        // Generate logo on page load
+        window.onload = generateLogo;
+    </script>
+</body>
+</html>

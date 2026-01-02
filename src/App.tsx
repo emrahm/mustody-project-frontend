@@ -33,6 +33,7 @@ import MessagingPage from "./pages/MessagingPage";
 import ProfileSettings from "./pages/ProfileSettings";
 import AccountSettings from "./pages/AccountSettings";
 import KYCManagement from "./pages/KYCManagement";
+import About from "./pages/About";
 import { Homepage } from "./pages/Homepage";
 import { ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -60,6 +61,7 @@ function Router() {
       <Route path="/messaging" component={() => <ProtectedRoute><MessagingPage /></ProtectedRoute>} />
       <Route path="/profile" component={() => <ProtectedRoute><ProfileSettings /></ProtectedRoute>} />
       <Route path="/settings" component={() => <ProtectedRoute><AccountSettings /></ProtectedRoute>} />
+      <Route path="/about" component={About} />
       <Route path="/admin/kyc" component={() => <ProtectedRoute><KYCManagement /></ProtectedRoute>} />
       <Route path="/payment-links" component={PaymentLinksManagement} />
       <Route path="/payment-links/create" component={CreatePaymentLink} />
