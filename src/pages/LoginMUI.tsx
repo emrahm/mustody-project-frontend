@@ -28,6 +28,7 @@ import { authAPI } from '@/lib/api';
 import { getErrorMessage, getErrorDetails } from '@/lib/errorUtils';
 import { useAuth } from '@/contexts/AuthContext';
 import TwoFactorDialog from '@/components/TwoFactorDialog';
+import { googleOAuthService } from '@/lib/googleAuth';
 
 const schema = yup.object({
   email: yup.string().email('Invalid email').required('Email is required'),
@@ -145,6 +146,18 @@ export default function LoginMUI() {
     } catch (error: any) {
       setError(error.response?.data?.error || 'Failed to send verification email. Please try again.');
     } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      await googleOAuthService.initiateLogin();
+    } catch (error: any) {
+      console.error('Google login error:', error);
+      setError('Failed to start Google login process');
       setLoading(false);
     }
   };
@@ -313,9 +326,27 @@ export default function LoginMUI() {
               variant="contained"
               size="large"
               disabled={loading}
-              sx={{ mb: 3 }}
+              sx={{ mb: 2 }}
             >
               {loading ? 'Signing in...' : 'Sign In'}
+            </Button>
+
+            <Divider sx={{ my: 2 }}>
+              <Typography variant="body2" color="text.secondary">
+                or
+              </Typography>
+            </Divider>
+
+            <Button
+              fullWidth
+              variant="outlined"
+              size="large"
+              startIcon={<Google />}
+              onClick={handleGoogleLogin}
+              disabled={loading || !googleOAuthService.isConfigured()}
+              sx={{ mb: 3 }}
+            >
+              Continue with Google
             </Button>
           </form>
 
