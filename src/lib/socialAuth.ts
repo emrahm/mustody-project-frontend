@@ -30,7 +30,7 @@ class SocialLoginService {
    * Get social OAuth authorization URL from backend
    */
   async getAuthUrl(provider: 'google' | 'github' = 'google'): Promise<SocialAuthResponse> {
-    const response = await api.get<SocialAuthResponse>(`/auth/social/url?provider=${provider}`);
+    const response = await api.get<SocialAuthResponse>(`/social/url?provider=${provider}`);
     return response.data;
   }
 
@@ -38,7 +38,7 @@ class SocialLoginService {
    * Handle OAuth callback with authorization code
    */
   async handleCallback(provider: 'google' | 'github', code: string, state: string): Promise<SocialCallbackResponse> {
-    const response = await api.get<SocialCallbackResponse>(`/auth/social/callback?provider=${provider}&code=${code}&state=${state}`);
+    const response = await api.get<SocialCallbackResponse>(`/social/callback?provider=${provider}&code=${code}&state=${state}`);
     return response.data;
   }
 

@@ -15,21 +15,16 @@ export default function AuthCallback() {
         const urlParams = new URLSearchParams(window.location.search);
         const code = urlParams.get('code');
         const state = urlParams.get('state');
-        const provider = urlParams.get('provider') || 'google';
+        const provider = urlParams.get('provider') || 'google'; // Check for provider param first
         const error = urlParams.get('error');
 
-        console.log('OAuth callback - Full URL:', window.location.href);
-        console.log('OAuth callback params:', { code: !!code, state, provider, error });
-
         if (error) {
-          console.error('OAuth error:', error);
           setStatus(`Authentication failed: ${error}`);
           setTimeout(() => setLocation('/login'), 3000);
           return;
         }
 
         if (!code) {
-          console.error('Missing authorization code');
           setStatus('Missing authorization code');
           setTimeout(() => setLocation('/login'), 3000);
           return;
@@ -37,64 +32,27 @@ export default function AuthCallback() {
 
         setStatus(`Authenticating with ${provider}...`);
 
-        // Direct social login approach (since we're using direct Google OAuth)
+        // Use backend unified social login service
         try {
-          console.log('Getting access token from Google...');
+          // Call backend social callback endpoint
+          const response = await socialLoginService.handleCallback(provider as 'google' | 'github', code, state);
           
-          // Get user info from Google directly
-          const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({
-              client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
-              code,
-              grant_type: 'authorization_code',
-              redirect_uri: import.meta.env.VITE_REDIRECT_URI || 'http://localhost:3000/auth/callback',
-            }),
-          });
-
-          const tokenData = await tokenResponse.json();
-          console.log('Token response:', { success: !!tokenData.access_token, error: tokenData.error });
-          
-          if (!tokenData.access_token) {
-            throw new Error(`Failed to get access token: ${tokenData.error || 'Unknown error'}`);
-          }
-
-          console.log('Getting user info from Google...');
-          
-          // Get user info
-          const userResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-            headers: { Authorization: `Bearer ${tokenData.access_token}` },
-          });
-
-          const userData = await userResponse.json();
-          console.log('User data from Google:', { id: userData.id, email: userData.email, name: userData.name });
-
-          console.log('Calling backend social login...');
-          
-          // Use backend social login endpoint
-          const response = await authAPI.socialLogin('google', userData.id, userData.email, userData.name, userData.picture);
-          
-          console.log('Backend social login response:', { success: !!response.data.token, user: response.data.user });
           
           setStatus('Login successful! Redirecting...');
           
           // Store token and user data
-          await login(response.data.token, response.data.user);
+          await login(response.token, response.user);
           
-          console.log('Login context updated, redirecting to dashboard...');
           
           // Redirect to dashboard
           setLocation('/dashboard');
 
-        } catch (directError) {
-          console.error('Social login failed:', directError);
-          setStatus(`Authentication failed: ${directError.message}`);
+        } catch (backendError) {
+          setStatus(`Authentication failed: ${backendError.message}`);
           setTimeout(() => setLocation('/login'), 3000);
         }
 
       } catch (error) {
-        console.error('OAuth callback error:', error);
         setStatus(`Authentication failed: ${error.message}`);
         setTimeout(() => setLocation('/login'), 3000);
       }

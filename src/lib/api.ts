@@ -100,8 +100,6 @@ export const authAPI = {
   regenerateBackupCodes: () =>
     api.post('/account/2fa/backup-codes'),
   
-  logout: () => api.post('/logout'),
-  
   me: () => api.get('/me'),
   
   getMenuItems: () => api.get('/menu'),

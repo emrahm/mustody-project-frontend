@@ -166,23 +166,21 @@ export default function LoginMUI() {
     }
   };
 
-  const handleGoogleSignIn = () => {
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    const redirectUri = import.meta.env.VITE_REDIRECT_URI || 'http://localhost:3000/auth/callback';
-    
-    if (!clientId) {
-      setError('Google OAuth is not configured');
-      return;
+  const handleGoogleSignIn = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      
+      // Use the backend's social URL endpoint to get proper state
+      const response = await socialLoginService.getAuthUrl('google');
+      
+      // Redirect to the backend-generated Google OAuth URL
+      window.location.href = response.auth_url;
+      
+    } catch (error: any) {
+      setError('Failed to start Google login process');
+      setLoading(false);
     }
-    
-    const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
-      `client_id=${clientId}&` +
-      `redirect_uri=${encodeURIComponent(redirectUri)}&` +
-      `response_type=code&` +
-      `scope=email profile&` +
-      `state=login`;
-    
-    window.location.href = googleAuthUrl;
   };
 
   return (
