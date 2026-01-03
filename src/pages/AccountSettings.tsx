@@ -146,17 +146,7 @@ export default function AccountSettings() {
       setLoading(false);
     }
   };
-
-  const handleGoogleAuth = async () => {
-    try {
-      const response = await api.get('/auth/google/url');
-      window.location.href = response.data.url;
-    } catch (error) {
-      console.error('Failed to get Google auth URL:', error);
-      alert('Failed to connect Google account');
-    }
-  };
-
+ 
   return (
     <DashboardLayout>
       <Box sx={{ p: 3 }}>
@@ -207,25 +197,6 @@ export default function AccountSettings() {
                       Disable 2FA
                     </Button>
                   )}
-                </Box>
-                
-                <Divider sx={{ my: 2 }} />
-                
-                {/* Google Authentication */}
-                <Box sx={{ mb: 3 }}>
-                  <Typography variant="subtitle1" gutterBottom>Google Authentication</Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    Link your Google account for easier sign-in
-                  </Typography>
-                  
-                  <Button
-                    variant="outlined"
-                    startIcon={<Google />}
-                    onClick={handleGoogleAuth}
-                    sx={{ color: '#4285f4', borderColor: '#4285f4' }}
-                  >
-                    Connect Google Account
-                  </Button>
                 </Box>
                 
                 <Divider sx={{ my: 2 }} />
