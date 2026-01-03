@@ -47,7 +47,7 @@ export default function AuthCallback() {
             const response = await authAPI.socialCallback(provider as string, code, state || '');
             const responseData = response.data;
             
-            console.log('Social Login Response:', response.data);
+
             setStatus('Login successful! Redirecting...');
             
             // Construct User object compatible with AuthContext
@@ -72,13 +72,20 @@ export default function AuthCallback() {
           // Redirect to dashboard
           setLocation('/dashboard');
 
+
         } catch (backendError: any) {
           console.error('Backend auth error:', backendError);
+          setStatus('Login failed. Please try again.');
+          
           // If the error is "context canceled" it might be a strict mode artifact, but usually it means the request failed.
           // We can try to show a more helpful message or just the error.
           const msg = backendError.response?.data?.error || backendError.message;
           setStatus(`Authentication failed: ${msg}`);
-          setTimeout(() => setLocation('/login'), 3000);
+          
+          // Only redirect if it's not a network/server setup issue
+          if (backendError.response?.status !== 404 && backendError.response?.status !== 500) {
+             setTimeout(() => setLocation('/login'), 3000);
+          }
         }
 
       } catch (error: any) {

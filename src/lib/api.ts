@@ -121,7 +121,7 @@ export const authAPI = {
     api.get<{auth_url: string; state: string}>(`/social/url?provider=${provider}`),
     
   socialCallback: (provider: string, code: string, state: string) =>
-    api.get<AuthResponse>(`/social/callback?provider=${provider}&code=${code}&state=${state}`),
+    api.get<any>(`/social/callback?provider=${provider}&code=${code}&state=${state}`),
   
   verifyEmail: (token: string) =>
     api.post('/verify-email', { token }),

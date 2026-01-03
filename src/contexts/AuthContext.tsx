@@ -35,6 +35,7 @@ interface AuthContextType {
   login: (token: string, userData?: User) => Promise<void>;
   logout: () => Promise<void>;
   hasRole: (role: string) => boolean;
+  hasGlobalRole: (role: string) => boolean;
   canAccess: (requiredRoles: string[]) => boolean;
 }
 
@@ -120,8 +121,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     const allRoles = userData.roles || [userData.role];
 
-    // Admin/Owner specific items
-    if (allRoles.includes('admin') || allRoles.includes('owner')) {
+    // Global Admin/Owner specific items (Strict check)
+    const isGlobalAdmin = userData.role === 'admin' || userData.roles?.includes('admin');
+    const isGlobalOwner = userData.role === 'owner' || userData.roles?.includes('owner');
+
+    if (isGlobalAdmin || isGlobalOwner) {
       menuItems.push(
         { id: '2', label: 'User Management', path: '/users', icon: 'People', roles: ['admin', 'owner'], order: 2 },
         { id: '3', label: 'Role Management', path: '/roles', icon: 'Security', roles: ['admin', 'owner'], order: 3 },
@@ -131,14 +135,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         { id: '9', label: 'Messaging', path: '/messaging', icon: 'Message', roles: [], order: 9 },
       );
     }
+    
+    // Check for Tenant Admin via members or secondary roles
+    const isTenantAdmin = allRoles.includes('tenant_admin') || userData.members?.some(m => m.role === 'admin' || m.role === 'tenant_admin');
 
     // Tenant Admin specific items
-    if (allRoles.includes('tenant_admin')) {
-      menuItems.push(
-        { id: '6', label: 'Role Management', path: '/roles', icon: 'Security', roles: ['tenant_admin'], order: 6 },
-        { id: '8', label: 'Team Management', path: '/team', icon: 'People', roles: ['tenant_admin'], order: 8 },
-        { id: '9', label: 'Messaging', path: '/messaging', icon: 'Message', roles: [], order: 9 },
-      );
+    if (isTenantAdmin) {
+      // Avoid duplicating items if they overlap
+      if (!menuItems.find(i => i.id === '6')) {
+        menuItems.push(
+            { id: '6', label: 'Role Management', path: '/roles', icon: 'Security', roles: ['tenant_admin'], order: 6 },
+            { id: '8', label: 'Team Management', path: '/team', icon: 'People', roles: ['tenant_admin'], order: 8 },
+            { id: '9', label: 'Messaging', path: '/messaging', icon: 'Message', roles: [], order: 9 },
+        );
+      }
     }
 
     // Common items for all authenticated users
@@ -228,6 +238,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const hasGlobalRole = (role: string): boolean => {
+      if (!user) return false;
+      return user.role === role || (user.roles?.includes(role) ?? false);
+  };
+
   const hasRole = (role: string): boolean => {
     if (!user) return false;
     // Check user's main role
@@ -250,6 +265,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     login,
     logout,
     hasRole,
+    hasGlobalRole,
     canAccess,
   };
 

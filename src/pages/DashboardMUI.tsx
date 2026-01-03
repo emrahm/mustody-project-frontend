@@ -101,7 +101,7 @@ const StatCard = ({ title, value, change, icon, color = 'primary' }: any) => {
 
 export default function DashboardContent() {
   const theme = useTheme();
-  const { user, hasRole } = useAuth();
+  const { user, hasRole, hasGlobalRole } = useAuth();
   const { notifications } = useNotifications();
   const [dashboardStats, setDashboardStats] = useState(null);
   const [recentActivities, setRecentActivities] = useState([]);
@@ -198,7 +198,8 @@ export default function DashboardContent() {
       );
     }
     
-    if (hasRole('admin') || hasRole('owner')) {
+    // Use hasGlobalRole for system-wide admin actions
+    if (hasGlobalRole('admin') || hasGlobalRole('owner')) {
       actions.push(
         { title: 'Manage Users', icon: <People />, path: '/users', color: 'primary' },
         { title: 'KYC Management', icon: <VerifiedUser />, path: '/admin/kyc', color: 'info' },
