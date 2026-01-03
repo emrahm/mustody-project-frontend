@@ -1,11 +1,12 @@
 import axios from 'axios';
 
 // Backend API base URL
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
 // Create axios instance
 export const api = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -81,6 +82,9 @@ export const authAPI = {
   
   socialLogin: (provider: string, provider_id: string, email: string, name?: string, avatar_url?: string) =>
     api.post('/login/social', { provider, provider_id, email, name, avatar_url }),
+
+  getSocialAuthUrl: (provider: string) =>
+    api.get(`/social/url?provider=${provider}`),
   
   verifyEmail: (token: string) =>
     api.post('/verify-email', { token }),

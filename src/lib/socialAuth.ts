@@ -12,7 +12,11 @@ export interface SocialCallbackResponse {
     id: string;
     email: string;
     name: string;
-    role: string;
+    roles: string[];
+    tenant_id: string;
+    kyc_status: string;
+    two_factor_enabled: boolean;
+    verified: boolean;
   };
   expires_in: number;
 }

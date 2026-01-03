@@ -21,23 +21,24 @@ export default function Login() {
   const [requires2FA, setRequires2FA] = useState(false);
   const [twoFactorError, setTwoFactorError] = useState('');
 
-  const handleSocialLogin = (provider: 'google' | 'github') => {
-    const clientId = provider === 'google' 
-      ? import.meta.env.VITE_GOOGLE_CLIENT_ID 
-      : import.meta.env.VITE_GITHUB_CLIENT_ID;
-    const redirectUri = import.meta.env.VITE_REDIRECT_URI || 'http://localhost:3000/auth/callback';
-    
-    if (!clientId) {
-      setError(`${provider} OAuth is not configured`);
-      return;
+  const handleSocialLogin = async (provider: 'google' | 'github') => {
+    try {
+      setLoading(true);
+      setError('');
+      
+      const response = await authAPI.getSocialAuthUrl(provider);
+      
+      if (response.data && response.data.auth_url) {
+        window.location.href = response.data.auth_url;
+      } else {
+        setError('Failed to get social login URL');
+        setLoading(false);
+      }
+    } catch (error: any) {
+      console.error('Social login error:', error);
+      setError(error.response?.data?.error || 'Failed to initialize social login');
+      setLoading(false);
     }
-    
-    const urls = {
-      google: `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=email profile&state=login`,
-      github: `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=user:email&state=login`
-    };
-    
-    window.location.href = urls[provider];
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
