@@ -26,6 +26,7 @@ import AuthCallback from "./pages/AuthCallback";
 import TenantRequest from "./pages/TenantRequest";
 import InvitationRegister from "./pages/InvitationRegister";
 import AuditLogs from "./pages/AuditLogs";
+import AuditLogsMUI from "./pages/AuditLogsMUI";
 import ApiKeyManagementPage from "./pages/ApiKeyManagementPage";
 import RoleManagement from "./pages/RoleManagement";
 import TenantManagement from "./pages/TenantManagement";
@@ -69,7 +70,8 @@ function Router() {
       <Route path="/auth/callback" component={AuthCallback} />
       <Route path="/tenant-request" component={TenantRequest} />
       <Route path="/invitation/:token" component={InvitationRegister} />
-      <Route path="/audit-logs" component={AuditLogs} />
+      <Route path="/audit-logs" component={() => <ProtectedRoute><AuditLogsMUI /></ProtectedRoute>} />
+      <Route path="/audit-logs-old" component={AuditLogs} />
       <Route component={NotFound} />
     </Switch>
   );
