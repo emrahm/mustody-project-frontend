@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/contexts/AuthContext';
-import { socialLoginService } from '@/lib/socialAuth';
+
 import { authAPI } from '@/lib/api';
 
 export default function AuthCallback() {
@@ -40,33 +40,34 @@ export default function AuthCallback() {
            setStatus(`Authenticating with ${provider}...`);
         }
 
-        // Use backend unified social login service
-        try {
-          // Call backend social callback endpoint
-          const response = await socialLoginService.handleCallback(provider as 'google' | 'github', code, state || '');
-          
-          setStatus('Login successful! Redirecting...');
-          
-          // Construct User object compatible with AuthContext
-          // Map backend response fields to the frontend User interface
-          const userData = {
-            id: response.user.id,
-            name: response.user.name,
-            email: response.user.email,
-            // Map first role from array to singular role, default to 'user'
-            role: response.user.roles && response.user.roles.length > 0 ? response.user.roles[0] : 'user',
-            roles: response.user.roles || [],
-            // Map verified status
-            email_verified: response.user.verified,
-            // Initialize required fields that might be missing from this specific endpoint
-            avatar_url: '', 
-            members: [], // Initialize empty members array
-          };
-          
-          // Store token and user data
-          // We use 'as any' here because the constructed object matches what AuthContext needs at runtime,
-          // even if the strict types might have slight discrepancies in optional fields.
-          await login(response.token, userData as any);
+          // Use unified Auth API
+          try {
+            // Call backend social callback endpoint via authAPI
+            // Note: api.get returns AxiosResponse, so we need .data
+            const response = await authAPI.socialCallback(provider as string, code, state || '');
+            const responseData = response.data;
+            
+            console.log('Social Login Response:', response.data);
+            setStatus('Login successful! Redirecting...');
+            
+            // Construct User object compatible with AuthContext
+            // Map backend response fields to the frontend User interface
+            const userData = {
+              id: responseData.user.id,
+              name: responseData.user.name,
+              email: responseData.user.email,
+              // Map first role from array to singular role, default to 'user'
+              role: responseData.user.roles && responseData.user.roles.length > 0 ? responseData.user.roles[0] : 'user',
+              roles: responseData.user.roles || [],
+              // Map verified status
+              email_verified: responseData.user.verified,
+              // Initialize required fields that might be missing from this specific endpoint
+              avatar_url: responseData.user.avatar_url || '', 
+              members: responseData.user.members || [], 
+            };
+            
+            // Store token and user data
+            await login(responseData.token, userData as any);
           
           // Redirect to dashboard
           setLocation('/dashboard');

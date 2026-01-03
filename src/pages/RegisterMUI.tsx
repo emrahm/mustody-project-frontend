@@ -94,23 +94,22 @@ const {
     }
   };
 
-  const handleGoogleSignIn = () => {
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    const redirectUri = import.meta.env.VITE_REDIRECT_URI || 'http://localhost:3000/auth/callback';
-    
-    if (!clientId) {
-      setError('Google OAuth is not configured');
-      return;
+  const handleGoogleSignIn = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      
+      // Use the backend's social URL endpoint to get proper state
+      const response = await authAPI.getSocialAuthUrl('google');
+      
+      // Redirect to the backend-generated Google OAuth URL
+      window.location.href = response.data.auth_url;
+      
+    } catch (error: any) {
+      console.error('Google sign-in error:', error);
+      setError('Failed to start Google sign-in process');
+      setLoading(false);
     }
-    
-    const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
-      `client_id=${clientId}&` +
-      `redirect_uri=${encodeURIComponent(redirectUri)}&` +
-      `response_type=code&` +
-      `scope=email profile&` +
-      `state=register`;
-    
-    window.location.href = googleAuthUrl;
   };
 
   return (

@@ -30,9 +30,12 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    // Check if the request explicitly requested to skip auth redirect
+    const skipRedirect = (error.config as any)?._skipAuthRedirect;
+
+    if (error.response?.status === 401 && !skipRedirect) {
       // Only clear token and redirect if it's NOT a public page and NOT the homepage
-      const publicPaths = ['/verify-email', '/login', '/register', '/landing'];
+      const publicPaths = ['/verify-email', '/login', '/register', '/landing', '/auth/callback'];
       const isHomepage = window.location.pathname === '/';
       
       if (!publicPaths.includes(window.location.pathname) && !isHomepage) {
@@ -57,34 +60,68 @@ api.interceptors.response.use(
   }
 );
 
+
+
+// Auth Response Types
+export interface AuthResponse {
+  message?: string;
+  token: string;
+  expires_in?: number;
+  user: {
+    id: string;
+    email: string;
+    name: string;
+    roles: string[];        // Standard from backend
+    tenant_id: string;      // Standard from backend
+    kyc_status: string;     // Standard from backend
+    two_factor_enabled: boolean; // Standard from backend
+    verified: boolean;      // Standard from backend
+    
+    // Optional/Legacy fields that might not be in all responses
+    role?: string;          
+    avatar_url?: string;
+    members?: Array<{
+      role: string;
+      tenant: {
+        id: string;
+        name: string;
+        slug: string;
+      };
+    }>;
+  };
+}
+
 // Auth API endpoints
 export const authAPI = {
   login: (email: string, password: string) =>
-    api.post('/login', { email, password }),
+    api.post<AuthResponse>('/login', { email, password }),
   
   loginWith2FA: (email: string, password: string, code: string) =>
-    api.post('/login/2fa', { email, password, code }),
+    api.post<AuthResponse>('/login/2fa', { email, password, code }),
   
   logout: () =>
     api.post('/logout'),
   
   refreshToken: () =>
-    api.post('/refresh-token'),
+    api.post<{token: string}>('/refresh-token'),
   
   adminLogin: (email: string, password: string) =>
-    api.post('/admin/login', { email, password }),
+    api.post<AuthResponse>('/admin/login', { email, password }),
   
   registerAdmin: (name: string, email: string, password: string, org_name: string) =>
-    api.post('/register/admin', { name, email, password, org_name }),
+    api.post<AuthResponse>('/register/admin', { name, email, password, org_name }),
   
   registerUser: (name: string, email: string, password: string) =>
-    api.post('/register', { name, email, password }),
+    api.post<AuthResponse>('/register', { name, email, password }),
   
   socialLogin: (provider: string, provider_id: string, email: string, name?: string, avatar_url?: string) =>
-    api.post('/login/social', { provider, provider_id, email, name, avatar_url }),
+    api.post<AuthResponse>('/login/social', { provider, provider_id, email, name, avatar_url }),
 
   getSocialAuthUrl: (provider: string) =>
-    api.get(`/social/url?provider=${provider}`),
+    api.get<{auth_url: string; state: string}>(`/social/url?provider=${provider}`),
+    
+  socialCallback: (provider: string, code: string, state: string) =>
+    api.get<AuthResponse>(`/social/callback?provider=${provider}&code=${code}&state=${state}`),
   
   verifyEmail: (token: string) =>
     api.post('/verify-email', { token }),
@@ -124,9 +161,9 @@ export const tenantAPI = {
     api.post('/invitation/accept', { token, name, password }),
 
   // Dashboard stats
-  getDashboardStats: () => api.get('/dashboard/stats'),
+  getDashboardStats: (config?: any) => api.get('/dashboard/stats', config),
   
-  getRecentActivities: () => api.get('/dashboard/activities'),
+  getRecentActivities: (config?: any) => api.get('/dashboard/activities', config),
 };
 
 // API Key management endpoints

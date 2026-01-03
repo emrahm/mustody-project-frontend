@@ -28,7 +28,7 @@ import { authAPI } from '@/lib/api';
 import { getErrorMessage, getErrorDetails } from '@/lib/errorUtils';
 import { useAuth } from '@/contexts/AuthContext';
 import TwoFactorDialog from '@/components/TwoFactorDialog';
-import { socialLoginService } from '@/lib/socialAuth';
+
 
 const schema = yup.object({
   email: yup.string().email('Invalid email').required('Email is required'),
@@ -72,7 +72,18 @@ export default function LoginMUI() {
       const response = await authAPI.login(data.email, data.password);
       
       // Store token and user data from login response
-      await login(response.data.token, response.data.user);
+      // Store token and user data from login response
+      // Normalize user data to match AuthContext requirements
+      const userData = {
+        ...response.data.user,
+        role: response.data.user.roles && response.data.user.roles.length > 0 ? response.data.user.roles[0] : 'user',
+        roles: response.data.user.roles || [],
+        members: response.data.user.members || [],
+        avatar_url: response.data.user.avatar_url || '',
+        email_verified: response.data.user.verified // backend returns 'verified', frontend User expects 'email_verified'
+      };
+      
+      await login(response.data.token, userData as any);
       
       console.log('Login successful, user:', response.data.user);
       setLocation('/dashboard');
@@ -114,7 +125,18 @@ export default function LoginMUI() {
       const response = await authAPI.loginWith2FA(loginData.email, loginData.password, code);
       
       // Store token and user data from login response
-      await login(response.data.token, response.data.user);
+      // Store token and user data from login response
+      // Normalize user data to match AuthContext requirements
+      const userData = {
+        ...response.data.user,
+        role: response.data.user.roles && response.data.user.roles.length > 0 ? response.data.user.roles[0] : 'user',
+        roles: response.data.user.roles || [],
+        members: response.data.user.members || [],
+        avatar_url: response.data.user.avatar_url || '',
+        email_verified: response.data.user.verified // backend returns 'verified', frontend User expects 'email_verified'
+      };
+      
+      await login(response.data.token, userData as any);
       
       console.log('2FA Login successful:', response.data);
       setLocation('/dashboard');
@@ -150,21 +172,7 @@ export default function LoginMUI() {
     }
   };
 
-  const handleGoogleLogin = async () => {
-    try {
-      setLoading(true);
-      setError('');
-      
-      console.log('Initiating Google login...');
-      console.log('Service configured:', socialLoginService.isConfigured());
-      
-      await socialLoginService.initiateLogin('google');
-    } catch (error: any) {
-      console.error('Google login error:', error);
-      setError(error.message || 'Failed to start Google login process');
-      setLoading(false);
-    }
-  };
+
 
   const handleGoogleSignIn = async () => {
     try {
@@ -172,10 +180,10 @@ export default function LoginMUI() {
       setError('');
       
       // Use the backend's social URL endpoint to get proper state
-      const response = await socialLoginService.getAuthUrl('google');
+      const response = await authAPI.getSocialAuthUrl('google');
       
       // Redirect to the backend-generated Google OAuth URL
-      window.location.href = response.auth_url;
+      window.location.href = response.data.auth_url;
       
     } catch (error: any) {
       setError('Failed to start Google login process');
