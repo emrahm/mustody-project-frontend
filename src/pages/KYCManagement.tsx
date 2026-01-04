@@ -25,6 +25,8 @@ import {
   Grid,
   IconButton,
   Alert,
+  Avatar,
+  Divider,
 } from '@mui/material';
 import {
   Visibility,
@@ -33,6 +35,10 @@ import {
   Cancel,
   Pending,
   Refresh,
+  Description,
+  Image,
+  PictureAsPdf,
+  InsertDriveFile,
 } from '@mui/icons-material';
 import DashboardLayout from '@/components/DashboardLayout';
 import { api } from '@/lib/api';
@@ -143,39 +149,77 @@ export default function KYCManagement() {
     }
   };
 
+  const getFileIcon = (filename) => {
+    const ext = filename.toLowerCase().split('.').pop();
+    switch (ext) {
+      case 'pdf': return <PictureAsPdf sx={{ color: 'error.main' }} />;
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+      case 'gif': return <Image sx={{ color: 'info.main' }} />;
+      case 'doc':
+      case 'docx': return <Description sx={{ color: 'primary.main' }} />;
+      default: return <InsertDriveFile sx={{ color: 'grey.600' }} />;
+    }
+  };
+
   return (
     <DashboardLayout>
       <Box sx={{ p: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h4">KYC Management</Typography>
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          mb: 3
+        }}>
+          <Typography variant="h4" sx={{ fontWeight: 600 }}>
+            KYC Management
+          </Typography>
           <Button
             variant="outlined"
             startIcon={<Refresh />}
             onClick={fetchKYCRequests}
             disabled={loading}
+            sx={{ 
+              borderRadius: 2,
+              textTransform: 'none'
+            }}
           >
             Refresh
           </Button>
         </Box>
 
-        <Card>
+        <Card sx={{ borderRadius: 2, boxShadow: 2 }}>
           <CardContent>
             <TableContainer component={Paper}>
               <Table>
                 <TableHead>
-                  <TableRow>
-                    <TableCell>User</TableCell>
-                    <TableCell>Email</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Submitted</TableCell>
-                    <TableCell>Documents</TableCell>
-                    <TableCell>Actions</TableCell>
+                  <TableRow sx={{ bgcolor: 'grey.100' }}>
+                    <TableCell sx={{ fontWeight: 600 }}>User</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Email</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Submitted</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Documents</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Actions</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {requests.map((request) => (
-                    <TableRow key={request.id}>
-                      <TableCell>{request.user?.name || 'N/A'}</TableCell>
+                    <TableRow 
+                      key={request.id}
+                      sx={{ '&:hover': { bgcolor: 'grey.50' } }}
+                    >
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                          <Avatar 
+                            src={request.user?.avatar_url}
+                            sx={{ width: 32, height: 32 }}
+                          >
+                            {request.user?.name?.charAt(0)}
+                          </Avatar>
+                          {request.user?.name || 'N/A'}
+                        </Box>
+                      </TableCell>
                       <TableCell>{request.user?.email || 'N/A'}</TableCell>
                       <TableCell>
                         <Chip
@@ -214,70 +258,194 @@ export default function KYCManagement() {
         </Card>
 
         {/* Review Dialog */}
-        <Dialog open={reviewDialog} onClose={() => setReviewDialog(false)} maxWidth="md" fullWidth>
-          <DialogTitle>
+        <Dialog 
+          open={reviewDialog} 
+          onClose={() => setReviewDialog(false)} 
+          maxWidth="md" 
+          fullWidth
+          PaperProps={{
+            sx: { 
+              borderRadius: 3,
+              boxShadow: 4,
+              bgcolor: 'grey.50'
+            }
+          }}
+        >
+          <DialogTitle sx={{ 
+            fontWeight: 600,
+            bgcolor: 'primary.dark',
+            color: 'white',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1
+          }}>
+            <Visibility />
             Review KYC Request - {selectedRequest?.user?.name}
           </DialogTitle>
-          <DialogContent>
+          <DialogContent sx={{ p: 3, bgcolor: 'white', m: 2, borderRadius: 2 }}>
             <Grid container spacing={3}>
               <Grid item xs={12} md={6}>
-                <Typography variant="h6" gutterBottom>User Information</Typography>
-                <Typography><strong>Name:</strong> {selectedRequest?.user?.name}</Typography>
-                <Typography><strong>Email:</strong> {selectedRequest?.user?.email}</Typography>
-                <Typography><strong>Status:</strong> {selectedRequest?.status}</Typography>
-                <Typography><strong>Submitted:</strong> {selectedRequest?.created_at}</Typography>
+                <Box sx={{ 
+                  p: 2, 
+                  border: '1px solid', 
+                  borderColor: 'grey.300',
+                  borderRadius: 2,
+                  bgcolor: 'grey.50'
+                }}>
+                  <Typography variant="h6" gutterBottom sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 1,
+                    color: 'primary.main'
+                  }}>
+                    <CheckCircle />
+                    User Information
+                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                    <Avatar 
+                      src={selectedRequest?.user?.avatar_url}
+                      sx={{ width: 40, height: 40 }}
+                    >
+                      {selectedRequest?.user?.name?.charAt(0)}
+                    </Avatar>
+                    <Box>
+                      <Typography sx={{ fontWeight: 500 }}>
+                        {selectedRequest?.user?.name}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {selectedRequest?.user?.email}
+                      </Typography>
+                    </Box>
+                  </Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                    <Typography><strong>Status:</strong></Typography>
+                    <Chip 
+                      label={selectedRequest?.status} 
+                      color={getStatusColor(selectedRequest?.status)}
+                      size="small"
+                      icon={getStatusIcon(selectedRequest?.status)}
+                    />
+                  </Box>
+                  <Typography><strong>Submitted:</strong> {new Date(selectedRequest?.created_at).toLocaleDateString()}</Typography>
+                </Box>
               </Grid>
 
               <Grid item xs={12} md={6}>
-                <Typography variant="h6" gutterBottom>Documents ({documents?.length || 0})</Typography>
-                {documents && documents.length > 0 ? documents.map((doc, index) => (
-                  <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                    <Typography variant="body2">{doc}</Typography>
-                    <Button
-                      size="small"
-                      startIcon={<Download />}
-                      onClick={() => handleDownloadDocument(selectedRequest.user_id, doc)}
-                    >
-                      Download
-                    </Button>
+                <Box sx={{ 
+                  p: 2, 
+                  border: '1px solid', 
+                  borderColor: 'grey.300',
+                  borderRadius: 2,
+                  bgcolor: 'grey.50'
+                }}>
+                  <Typography variant="h6" gutterBottom sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 1,
+                    color: 'success.main'
+                  }}>
+                    <InsertDriveFile />
+                    Documents ({documents?.length || 0})
+                  </Typography>
+                  <Box sx={{ maxHeight: 180, overflowY: 'auto' }}>
+                    {documents && documents.length > 0 ? documents.map((doc, index) => (
+                      <Box key={index} sx={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: 1, 
+                        mb: 1,
+                        p: 1,
+                        bgcolor: 'white',
+                        borderRadius: 1,
+                        border: '1px solid',
+                        borderColor: 'grey.200'
+                      }}>
+                        {getFileIcon(doc)}
+                        <Typography variant="body2" sx={{ flex: 1, fontSize: '0.85rem' }}>
+                          {doc}
+                        </Typography>
+                        <IconButton
+                          size="small"
+                          color="primary"
+                          onClick={() => handleDownloadDocument(selectedRequest.user_id, doc)}
+                          sx={{ ml: 1 }}
+                        >
+                          <Download fontSize="small" />
+                        </IconButton>
+                      </Box>
+                    )) : (
+                      <Typography variant="body2" color="text.secondary">No documents uploaded</Typography>
+                    )}
                   </Box>
-                )) : (
-                  <Typography variant="body2" color="text.secondary">No documents uploaded</Typography>
-                )}
+                </Box>
               </Grid>
 
               <Grid item xs={12}>
-                <Typography variant="h6" gutterBottom>Review Decision</Typography>
-                <FormControl fullWidth sx={{ mb: 2 }}>
-                  <InputLabel>Status</InputLabel>
-                  <Select
-                    value={reviewData.status}
-                    onChange={(e) => setReviewData({ ...reviewData, status: e.target.value })}
-                  >
-                    <MenuItem value="verified">Verified</MenuItem>
-                    <MenuItem value="rejected">Rejected</MenuItem>
-                    <MenuItem value="under_review">Under Review</MenuItem>
-                  </Select>
-                </FormControl>
+                <Box sx={{ 
+                  p: 2, 
+                  border: '1px solid', 
+                  borderColor: 'grey.300',
+                  borderRadius: 2,
+                  bgcolor: 'grey.50'
+                }}>
+                  <Typography variant="h6" gutterBottom sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 1,
+                    color: 'warning.main'
+                  }}>
+                    <Pending />
+                    Review Decision
+                  </Typography>
+                  <FormControl fullWidth sx={{ mb: 2 }}>
+                    <InputLabel>Status</InputLabel>
+                    <Select
+                      value={reviewData.status}
+                      onChange={(e) => setReviewData({ ...reviewData, status: e.target.value })}
+                      sx={{ bgcolor: 'white' }}
+                    >
+                      <MenuItem value="verified">
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <CheckCircle color="success" />
+                          Verified
+                        </Box>
+                      </MenuItem>
+                      <MenuItem value="rejected">
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Cancel color="error" />
+                          Rejected
+                        </Box>
+                      </MenuItem>
+                      <MenuItem value="in_progress">
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Pending color="warning" />
+                          Under Review
+                        </Box>
+                      </MenuItem>
+                    </Select>
+                  </FormControl>
 
-                <TextField
-                  fullWidth
-                  multiline
-                  rows={3}
-                  label="Review Notes"
-                  value={reviewData.notes}
-                  onChange={(e) => setReviewData({ ...reviewData, notes: e.target.value })}
-                  placeholder="Add notes about the review decision..."
-                />
+                  <TextField
+                    fullWidth
+                    multiline
+                    rows={3}
+                    label="Review Notes"
+                    value={reviewData.notes}
+                    onChange={(e) => setReviewData({ ...reviewData, notes: e.target.value })}
+                    placeholder="Add notes about the review decision..."
+                    sx={{ bgcolor: 'white' }}
+                  />
+                </Box>
               </Grid>
             </Grid>
           </DialogContent>
-          <DialogActions>
+          <DialogActions sx={{ p: 2, bgcolor: 'grey.100' }}>
             <Button onClick={() => setReviewDialog(false)}>Cancel</Button>
             <Button
               onClick={handleUpdateStatus}
               variant="contained"
               disabled={!reviewData.status}
+              startIcon={<CheckCircle />}
             >
               Update Status
             </Button>
