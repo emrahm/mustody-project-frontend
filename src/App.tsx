@@ -28,6 +28,7 @@ import InvitationRegister from "./pages/InvitationRegister";
 import AuditLogs from "./pages/AuditLogs";
 import AuditLogsMUI from "./pages/AuditLogsMUI";
 import ApiKeyManagementPage from "./pages/ApiKeyManagementPage";
+import TenantRequestManagement from "./pages/TenantRequestManagement";
 import RoleManagement from "./pages/RoleManagement";
 import TenantManagement from "./pages/TenantManagement";
 import MessagingPage from "./pages/MessagingPage";
@@ -64,6 +65,7 @@ function Router() {
       <Route path="/settings" component={() => <ProtectedRoute><AccountSettings /></ProtectedRoute>} />
       <Route path="/about" component={About} />
       <Route path="/admin/kyc" component={() => <ProtectedRoute><KYCManagement /></ProtectedRoute>} />
+      <Route path="/admin/tenant-requests" component={() => <ProtectedRoute><TenantRequestManagement /></ProtectedRoute>} />
       <Route path="/payment-links" component={PaymentLinksManagement} />
       <Route path="/payment-links/create" component={CreatePaymentLink} />
       <Route path="/payment/:id" component={PublicPaymentLink} />
