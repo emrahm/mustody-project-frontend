@@ -55,10 +55,11 @@ export default function KYCManagement() {
   const fetchKYCRequests = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/kyc/admin/requests');
-      setRequests(response.data.requests);
+      const response = await api.get('/kyc/admin/requests'); 
+      setRequests(response.data.requests || []);
     } catch (error) {
       console.error('Failed to fetch KYC requests:', error);
+      setRequests([]);
     } finally {
       setLoading(false);
     }
@@ -66,8 +67,14 @@ export default function KYCManagement() {
 
   const fetchUserDocuments = async (userId) => {
     try {
-      const response = await api.get(`/kyc/admin/documents/${userId}`);
-      setDocuments(response.data.documents);
+      // Documents are already in the request data, no need for separate API call
+      const request = requests.find(r => r.user_id === userId);
+      if (request?.data?.documents) {
+        const docList = Object.keys(request.data.documents);
+        setDocuments(docList);
+      } else {
+        setDocuments([]);
+      }
     } catch (error) {
       console.error('Failed to fetch documents:', error);
       setDocuments([]);
@@ -85,7 +92,7 @@ export default function KYCManagement() {
       const response = await api.get(`/kyc/admin/document/${userId}/${filename}`, {
         responseType: 'blob'
       });
-      
+
       // Create download link
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
@@ -167,9 +174,9 @@ export default function KYCManagement() {
                 </TableHead>
                 <TableBody>
                   {requests.map((request) => (
-                    <TableRow key={request.user_id}>
-                      <TableCell>{request.name}</TableCell>
-                      <TableCell>{request.email}</TableCell>
+                    <TableRow key={request.id}>
+                      <TableCell>{request.user?.name || 'N/A'}</TableCell>
+                      <TableCell>{request.user?.email || 'N/A'}</TableCell>
                       <TableCell>
                         <Chip
                           label={request.status.replace('_', ' ').toUpperCase()}
@@ -179,9 +186,9 @@ export default function KYCManagement() {
                         />
                       </TableCell>
                       <TableCell>
-                        {new Date(request.submitted_at).toLocaleDateString()}
+                        {new Date(request.created_at).toLocaleDateString()}
                       </TableCell>
-                      <TableCell>{request.documents?.length || 0} files</TableCell>
+                      <TableCell>{Object.keys(request.data?.documents || {}).length} files</TableCell>
                       <TableCell>
                         <IconButton
                           onClick={() => handleViewRequest(request)}
@@ -209,21 +216,21 @@ export default function KYCManagement() {
         {/* Review Dialog */}
         <Dialog open={reviewDialog} onClose={() => setReviewDialog(false)} maxWidth="md" fullWidth>
           <DialogTitle>
-            Review KYC Request - {selectedRequest?.name}
+            Review KYC Request - {selectedRequest?.user?.name}
           </DialogTitle>
           <DialogContent>
             <Grid container spacing={3}>
               <Grid item xs={12} md={6}>
                 <Typography variant="h6" gutterBottom>User Information</Typography>
-                <Typography><strong>Name:</strong> {selectedRequest?.name}</Typography>
-                <Typography><strong>Email:</strong> {selectedRequest?.email}</Typography>
+                <Typography><strong>Name:</strong> {selectedRequest?.user?.name}</Typography>
+                <Typography><strong>Email:</strong> {selectedRequest?.user?.email}</Typography>
                 <Typography><strong>Status:</strong> {selectedRequest?.status}</Typography>
-                <Typography><strong>Submitted:</strong> {selectedRequest?.submitted_at}</Typography>
+                <Typography><strong>Submitted:</strong> {selectedRequest?.created_at}</Typography>
               </Grid>
-              
+
               <Grid item xs={12} md={6}>
-                <Typography variant="h6" gutterBottom>Documents ({documents.length})</Typography>
-                {documents.map((doc, index) => (
+                <Typography variant="h6" gutterBottom>Documents ({documents?.length || 0})</Typography>
+                {documents && documents.length > 0 ? documents.map((doc, index) => (
                   <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                     <Typography variant="body2">{doc}</Typography>
                     <Button
@@ -234,9 +241,11 @@ export default function KYCManagement() {
                       Download
                     </Button>
                   </Box>
-                ))}
+                )) : (
+                  <Typography variant="body2" color="text.secondary">No documents uploaded</Typography>
+                )}
               </Grid>
-              
+
               <Grid item xs={12}>
                 <Typography variant="h6" gutterBottom>Review Decision</Typography>
                 <FormControl fullWidth sx={{ mb: 2 }}>
@@ -250,7 +259,7 @@ export default function KYCManagement() {
                     <MenuItem value="under_review">Under Review</MenuItem>
                   </Select>
                 </FormControl>
-                
+
                 <TextField
                   fullWidth
                   multiline
