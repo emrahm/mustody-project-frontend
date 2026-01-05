@@ -30,6 +30,7 @@ export default function TenantAdminDashboard() {
             {[
               { id: "overview", label: "Overview", icon: "📊" },
               { id: "users", label: "Users", icon: "👥" },
+              { id: "team", label: "Team", icon: "🏢" },
               { id: "wallets", label: "Wallets", icon: "💰" },
               { id: "api-keys", label: "API Keys", icon: "🔑" },
               { id: "payment-links", label: "Payment Links", icon: "🔗" },
@@ -200,6 +201,29 @@ export default function TenantAdminDashboard() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </Card>
+        )}
+
+        {activeTab === "team" && (
+          <Card className="p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold text-gray-900">Team Management</h3>
+              <Button onClick={() => window.location.href = '/team'}>
+                <Users className="w-4 h-4 mr-2" />
+                Manage Team
+              </Button>
+            </div>
+            <div className="text-center py-8">
+              <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600 mb-2">Takım üyelerinizi yönetin</p>
+              <p className="text-sm text-gray-500">Yeni üye davet edin ve mevcut üyeleri görüntüleyin</p>
+              <Button 
+                className="mt-4" 
+                onClick={() => window.location.href = '/team'}
+              >
+                Takım Yönetimine Git
+              </Button>
             </div>
           </Card>
         )}

@@ -35,6 +35,8 @@ import MessagingPage from "./pages/MessagingPage";
 import ProfileSettings from "./pages/ProfileSettings";
 import AccountSettings from "./pages/AccountSettings";
 import KYCManagement from "./pages/KYCManagement";
+import TeamManagement from "./pages/TeamManagement";
+import TenantWelcome from "./pages/TenantWelcome";
 import About from "./pages/About";
 import { Homepage } from "./pages/Homepage";
 import { ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
@@ -60,6 +62,8 @@ function Router() {
       <Route path="/users" component={() => <ProtectedRoute><UserManagement /></ProtectedRoute>} />
       <Route path="/roles" component={() => <ProtectedRoute><RoleManagement /></ProtectedRoute>} />
       <Route path="/tenants" component={() => <ProtectedRoute><TenantManagement /></ProtectedRoute>} />
+      <Route path="/team" component={() => <ProtectedRoute><TeamManagement /></ProtectedRoute>} />
+      <Route path="/tenant-welcome" component={() => <ProtectedRoute><TenantWelcome /></ProtectedRoute>} />
       <Route path="/messaging" component={() => <ProtectedRoute><MessagingPage /></ProtectedRoute>} />
       <Route path="/profile" component={() => <ProtectedRoute><ProfileSettings /></ProtectedRoute>} />
       <Route path="/settings" component={() => <ProtectedRoute><AccountSettings /></ProtectedRoute>} />
