@@ -29,9 +29,10 @@ import AuditLogs from "./pages/AuditLogs";
 import AuditLogsMUI from "./pages/AuditLogsMUI";
 import ApiKeyManagementPage from "./pages/ApiKeyManagementPage";
 import TenantRequestManagement from "./pages/TenantRequestManagement";
-import RoleManagement from "./pages/RoleManagement";
+import RoleManagementMUI from "./pages/RoleManagementMUI";
+import TeamManagementMUI from "./pages/TeamManagementMUI";
 import TenantManagement from "./pages/TenantManagement";
-import MessagingPage from "./pages/MessagingPage";
+import MessagingMUI from "./pages/MessagingMUI";
 import ProfileSettings from "./pages/ProfileSettings";
 import AccountSettings from "./pages/AccountSettings";
 import KYCManagement from "./pages/KYCManagement";
@@ -60,11 +61,11 @@ function Router() {
       <Route path="/tenant-user/dashboard" component={TenantUserDashboard} />
       <Route path="/company" component={CompanyManagement} />
       <Route path="/users" component={() => <ProtectedRoute><UserManagement /></ProtectedRoute>} />
-      <Route path="/roles" component={() => <ProtectedRoute><RoleManagement /></ProtectedRoute>} />
+      <Route path="/roles" component={() => <ProtectedRoute><RoleManagementMUI /></ProtectedRoute>} />
       <Route path="/tenants" component={() => <ProtectedRoute><TenantManagement /></ProtectedRoute>} />
-      <Route path="/team" component={() => <ProtectedRoute><TeamManagement /></ProtectedRoute>} />
+      <Route path="/team" component={() => <ProtectedRoute><TeamManagementMUI /></ProtectedRoute>} />
       <Route path="/tenant-welcome" component={() => <ProtectedRoute><TenantWelcome /></ProtectedRoute>} />
-      <Route path="/messaging" component={() => <ProtectedRoute><MessagingPage /></ProtectedRoute>} />
+      <Route path="/messaging" component={() => <ProtectedRoute><MessagingMUI /></ProtectedRoute>} />
       <Route path="/profile" component={() => <ProtectedRoute><ProfileSettings /></ProtectedRoute>} />
       <Route path="/settings" component={() => <ProtectedRoute><AccountSettings /></ProtectedRoute>} />
       <Route path="/about" component={About} />
