@@ -167,9 +167,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         try {
           const userData = JSON.parse(storedUser);
           
-          // Add roles to user data if not present
-          const allRoles = [userData.role];
-          if (userData.members) {
+          // Use stored roles if available, otherwise build from role + members
+          const allRoles = userData.roles || [userData.role];
+          if (userData.members && !userData.roles) {
             userData.members.forEach(member => {
               if (!allRoles.includes(member.role)) {
                 allRoles.push(member.role);
@@ -199,9 +199,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     localStorage.setItem('auth_token', token);
     
     if (userData) {
-      // Add roles to user data
-      const allRoles = [userData.role];
-      if (userData.members) {
+      // Use backend roles if available, otherwise fallback to building from role + members
+      const allRoles = userData.roles || [userData.role];
+      if (userData.members && !userData.roles) {
         userData.members.forEach(member => {
           if (!allRoles.includes(member.role)) {
             allRoles.push(member.role);
