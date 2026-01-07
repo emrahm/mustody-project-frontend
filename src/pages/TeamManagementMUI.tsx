@@ -21,6 +21,10 @@ import {
   Alert,
   CircularProgress,
   Avatar,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import {
   People,
@@ -33,35 +37,68 @@ import {
 } from '@mui/icons-material';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useNotifications } from '@/contexts/NotificationContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
 
 interface TeamMember {
   id: string;
+  user_id: string;
+  name: string;
   email: string;
-  name?: string;
-  status: 'pending' | 'accepted' | 'expired';
-  invited_at: string;
-  accepted_at?: string;
-  role?: string;
+  role: string;
+  joined_at: string;
+}
+
+interface Tenant {
+  id: string;
+  name: string;
+  slug: string;
 }
 
 export default function TeamManagementMUI() {
   const { addNotification } = useNotifications();
+  const { user, hasGlobalRole } = useAuth();
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [selectedTenant, setSelectedTenant] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState('user');
   const [inviteLoading, setInviteLoading] = useState(false);
 
-  useEffect(() => {
-    fetchTeamMembers();
-  }, []);
+  const isAdmin = hasGlobalRole('admin');
 
-  const fetchTeamMembers = async () => {
+  useEffect(() => {
+    if (isAdmin) {
+      fetchTenants();
+    } else {
+      fetchTeamMembers();
+    }
+  }, [isAdmin]);
+
+  useEffect(() => {
+    if (selectedTenant) {
+      fetchTeamMembers(selectedTenant);
+    }
+  }, [selectedTenant]);
+
+  const fetchTenants = async () => {
     try {
-      const response = await api.get('/tenant/members');
-      setTeamMembers(Array.isArray(response.data) ? response.data : response.data?.data || []);
+      const response = await api.get('/admin/tenants');
+      setTenants(response.data.data || []);
+    } catch (error) {
+      console.error('Failed to fetch tenants:', error);
+      addNotification('Failed to fetch tenants', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchTeamMembers = async (tenantId?: string) => {
+    try {
+      const params = tenantId ? { tenant_id: tenantId } : {};
+      const response = await api.get('/tenant/members', { params });
+      setTeamMembers(response.data.members || []);
     } catch (error) {
       console.error('Failed to fetch team members:', error);
       addNotification('Failed to fetch team members', 'error');
@@ -77,13 +114,11 @@ export default function TeamManagementMUI() {
     try {
       await api.post('/tenant/invite', {
         email: inviteEmail,
-        role: inviteRole,
       });
       
       setShowInviteModal(false);
       setInviteEmail('');
-      setInviteRole('user');
-      fetchTeamMembers();
+      fetchTeamMembers(selectedTenant);
       addNotification('Team member invited successfully', 'success');
     } catch (error) {
       console.error('Failed to invite member:', error);
@@ -93,30 +128,21 @@ export default function TeamManagementMUI() {
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'accepted': return <CheckCircle sx={{ color: 'success.main' }} />;
-      case 'pending': return <Schedule sx={{ color: 'warning.main' }} />;
-      case 'expired': return <Cancel sx={{ color: 'error.main' }} />;
-      default: return <Schedule sx={{ color: 'grey.500' }} />;
-    }
-  };
-
-  const getStatusColor = (status: string): "success" | "warning" | "error" | "default" => {
-    switch (status) {
-      case 'accepted': return 'success';
-      case 'pending': return 'warning';
-      case 'expired': return 'error';
+  const getRoleColor = (role: string): "success" | "warning" | "error" | "default" | "primary" | "secondary" => {
+    switch (role) {
+      case 'admin': return 'error';
+      case 'tenant_admin': return 'primary';
+      case 'tenant_user': return 'success';
       default: return 'default';
     }
   };
 
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'accepted': return 'Active';
-      case 'pending': return 'Pending';
-      case 'expired': return 'Expired';
-      default: return status;
+  const getRoleLabel = (role: string) => {
+    switch (role) {
+      case 'admin': return 'Admin';
+      case 'tenant_admin': return 'Tenant Admin';
+      case 'tenant_user': return 'User';
+      default: return role;
     }
   };
 
@@ -131,18 +157,47 @@ export default function TeamManagementMUI() {
                 Team Management
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Manage your organization team members
+                Manage team members in your organization
               </Typography>
             </Box>
           </Box>
-          <Button
-            variant="contained"
-            startIcon={<PersonAdd />}
-            onClick={() => setShowInviteModal(true)}
-          >
-            Invite Member
-          </Button>
+          {!isAdmin && (
+            <Button
+              variant="contained"
+              startIcon={<PersonAdd />}
+              onClick={() => setShowInviteModal(true)}
+            >
+              Invite Member
+            </Button>
+          )}
         </Box>
+
+        {isAdmin && (
+          <Card sx={{ mb: 3 }}>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                Select Tenant
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Choose a tenant to view their team members
+              </Typography>
+              <FormControl fullWidth>
+                <InputLabel>Select a tenant...</InputLabel>
+                <Select
+                  value={selectedTenant}
+                  onChange={(e) => setSelectedTenant(e.target.value)}
+                  label="Select a tenant..."
+                >
+                  {tenants.map((tenant) => (
+                    <MenuItem key={tenant.id} value={tenant.id}>
+                      {tenant.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardContent>
@@ -157,22 +212,33 @@ export default function TeamManagementMUI() {
               <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
                 <CircularProgress />
               </Box>
+            ) : (isAdmin && !selectedTenant) ? (
+              <Box sx={{ textAlign: 'center', py: 6 }}>
+                <People sx={{ fontSize: 64, color: 'grey.400', mb: 2 }} />
+                <Typography variant="h6" color="text.secondary" gutterBottom>
+                  Please select a tenant to view team members
+                </Typography>
+              </Box>
             ) : teamMembers.length === 0 ? (
               <Box sx={{ textAlign: 'center', py: 6 }}>
                 <People sx={{ fontSize: 64, color: 'grey.400', mb: 2 }} />
                 <Typography variant="h6" color="text.secondary" gutterBottom>
-                  No team members yet
+                  No team members found
                 </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                  Invite your first team member to get started
-                </Typography>
-                <Button
-                  variant="contained"
-                  startIcon={<PersonAdd />}
-                  onClick={() => setShowInviteModal(true)}
-                >
-                  Invite Member
-                </Button>
+                {!isAdmin && (
+                  <>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                      Invite your first team member to get started
+                    </Typography>
+                    <Button
+                      variant="contained"
+                      startIcon={<PersonAdd />}
+                      onClick={() => setShowInviteModal(true)}
+                    >
+                      Invite Member
+                    </Button>
+                  </>
+                )}
               </Box>
             ) : (
               <TableContainer component={Paper}>
@@ -181,9 +247,8 @@ export default function TeamManagementMUI() {
                     <TableRow>
                       <TableCell>Member</TableCell>
                       <TableCell>Email</TableCell>
-                      <TableCell>Status</TableCell>
-                      <TableCell>Invited</TableCell>
-                      <TableCell>Accepted</TableCell>
+                      <TableCell>Role</TableCell>
+                      <TableCell>Joined</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -195,43 +260,26 @@ export default function TeamManagementMUI() {
                               <Email />
                             </Avatar>
                             <Typography variant="body2">
-                              {member.name || 'Invited User'}
+                              {member.name}
                             </Typography>
                           </Box>
                         </TableCell>
                         <TableCell>{member.email}</TableCell>
                         <TableCell>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            {getStatusIcon(member.status)}
-                            <Chip
-                              label={getStatusLabel(member.status)}
-                              size="small"
-                              color={getStatusColor(member.status)}
-                              variant="outlined"
-                            />
-                          </Box>
+                          <Chip
+                            label={getRoleLabel(member.role)}
+                            size="small"
+                            color={getRoleColor(member.role)}
+                            variant="outlined"
+                          />
                         </TableCell>
                         <TableCell>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <CalendarToday sx={{ fontSize: 16, color: 'text.secondary' }} />
                             <Typography variant="body2" color="text.secondary">
-                              {new Date(member.invited_at).toLocaleDateString()}
+                              {new Date(member.joined_at).toLocaleDateString()}
                             </Typography>
                           </Box>
-                        </TableCell>
-                        <TableCell>
-                          {member.accepted_at ? (
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <CalendarToday sx={{ fontSize: 16, color: 'text.secondary' }} />
-                              <Typography variant="body2" color="text.secondary">
-                                {new Date(member.accepted_at).toLocaleDateString()}
-                              </Typography>
-                            </Box>
-                          ) : (
-                            <Typography variant="body2" color="text.secondary">
-                              -
-                            </Typography>
-                          )}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -243,34 +291,36 @@ export default function TeamManagementMUI() {
         </Card>
 
         {/* Invite Member Dialog */}
-        <Dialog open={showInviteModal} onClose={() => setShowInviteModal(false)} maxWidth="sm" fullWidth>
-          <DialogTitle>Invite Team Member</DialogTitle>
-          <DialogContent>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-              <TextField
-                label="Email Address"
-                type="email"
-                value={inviteEmail}
-                onChange={(e) => setInviteEmail(e.target.value)}
-                fullWidth
-                placeholder="Enter email address"
-              />
-              <Alert severity="info">
-                An invitation email will be sent to this address with instructions to join your team.
-              </Alert>
-            </Box>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setShowInviteModal(false)}>Cancel</Button>
-            <Button 
-              onClick={handleInviteMember} 
-              disabled={inviteLoading || !inviteEmail} 
-              variant="contained"
-            >
-              {inviteLoading ? <CircularProgress size={20} /> : 'Send Invitation'}
-            </Button>
-          </DialogActions>
-        </Dialog>
+        {!isAdmin && (
+          <Dialog open={showInviteModal} onClose={() => setShowInviteModal(false)} maxWidth="sm" fullWidth>
+            <DialogTitle>Invite Team Member</DialogTitle>
+            <DialogContent>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+                <TextField
+                  label="Email Address"
+                  type="email"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  fullWidth
+                  placeholder="Enter email address"
+                />
+                <Alert severity="info">
+                  An invitation email will be sent to this address with instructions to join your team.
+                </Alert>
+              </Box>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setShowInviteModal(false)}>Cancel</Button>
+              <Button 
+                onClick={handleInviteMember} 
+                disabled={inviteLoading || !inviteEmail} 
+                variant="contained"
+              >
+                {inviteLoading ? <CircularProgress size={20} /> : 'Send Invitation'}
+              </Button>
+            </DialogActions>
+          </Dialog>
+        )}
       </Box>
     </DashboardLayout>
   );
