@@ -133,8 +133,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         { id: '5', label: 'Tenant Request Management', path: '/admin/tenant-requests', icon: 'Business', roles: ['admin', 'owner'], order: 5 },
         { id: '6', label: 'Audit Logs', path: '/audit-logs', icon: 'Security', roles: ['admin', 'owner'], order: 6 },
         { id: '7', label: 'KYC Management', path: '/admin/kyc', icon: 'Security', roles: ['admin', 'owner'], order: 7 },
-        { id: '8', label: 'API Keys', path: '/api-keys', icon: 'Key', roles: ['tenant_admin'], order: 8 },
-        { id: '9', label: 'Team Management', path: '/team', icon: 'People', roles: ['admin', 'owner'], order: 9 },
       );
     }
     
@@ -147,7 +145,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (!menuItems.find(i => i.id === '11')) {
         menuItems.push(
             { id: '12', label: 'Team Management', path: '/team', icon: 'People', roles: ['tenant_admin'], order: 12 },
-            { id: '13', label: 'Messaging', path: '/messaging', icon: 'Message', roles: [], order: 13 },
+            { id: '13', label: 'API Keys', path: '/api-keys', icon: 'Key', roles: ['tenant_admin'], order: 8 },
         );
       }
     }
