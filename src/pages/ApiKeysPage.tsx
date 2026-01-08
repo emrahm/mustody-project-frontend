@@ -28,23 +28,13 @@ import {
   Tooltip,
   Switch,
   FormControlLabel,
-  Tabs,
-  Tab,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  Divider,
 } from '@mui/material';
 import {
   Add,
   Key,
-  Visibility,
   Delete,
-  Edit,
   ContentCopy,
   Security,
-  Schedule,
-  ExpandMore,
   Code,
   PowerSettingsNew,
 } from '@mui/icons-material';
@@ -53,6 +43,7 @@ import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
 import DashboardLayout from '@/components/DashboardLayout';
 import { apiKeyAPI } from '@/lib/api';
+import { Link } from 'wouter';
 
 const schema = yup.object({
   name: yup.string().required('API key name is required'),
@@ -85,34 +76,11 @@ interface ApiKey {
   isActive: boolean;
 }
 
-interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
-}
-
-function TabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props;
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`simple-tabpanel-${index}`}
-      aria-labelledby={`simple-tab-${index}`}
-      {...other}
-    >
-      {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
-    </div>
-  );
-}
-
-export default function ApiKeysManagement() {
+export default function ApiKeysPage() {
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [open, setOpen] = useState(false);
   const [generatedKey, setGeneratedKey] = useState<{secret?: string; keyId: string} | null>(null);
   const [loading, setLoading] = useState(false);
-  const [tabValue, setTabValue] = useState(0);
-  const [selectedAuthType, setSelectedAuthType] = useState<'hmac' | 'rsa'>('hmac');
 
   const {
     control,
@@ -154,7 +122,7 @@ export default function ApiKeysManagement() {
         data.name, 
         [], // permissions - empty for now
         expiresAt,
-        data.authType as 'hmac' | 'rsa',
+        data.authType,
         data.authType === 'rsa' ? data.publicKey : undefined
       );
       
@@ -223,14 +191,21 @@ export default function ApiKeysManagement() {
               Manage your API keys for programmatic access to Mustody services
             </Typography>
           </Box>
-          <Button
-            variant="contained"
-            startIcon={<Add />}
-            onClick={() => setOpen(true)}
-            size="large"
-          >
-            Create API Key
-          </Button>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Link href="/api-docs">
+              <Button variant="outlined" startIcon={<Code />}>
+                View Documentation
+              </Button>
+            </Link>
+            <Button
+              variant="contained"
+              startIcon={<Add />}
+              onClick={() => setOpen(true)}
+              size="large"
+            >
+              Create API Key
+            </Button>
+          </Box>
         </Box>
 
         {/* Stats Cards */}
@@ -401,7 +376,7 @@ export default function ApiKeysManagement() {
         </Card>
 
         {/* Create API Key Dialog */}
-        <Dialog open={open} onClose={handleCloseDialog} maxWidth="md" fullWidth>
+        <Dialog open={open} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
           <DialogTitle>Create New API Key</DialogTitle>
           <form onSubmit={handleSubmit(onSubmit)}>
             <DialogContent>
@@ -518,257 +493,6 @@ export default function ApiKeysManagement() {
                   </FormControl>
                 )}
               />
-
-              <Divider sx={{ my: 3 }} />
-
-              {/* Documentation Section */}
-              <Box sx={{ mt: 3 }}>
-                <Tabs value={tabValue} onChange={(_, newValue) => setTabValue(newValue)}>
-                  <Tab label="HMAC Documentation" />
-                  <Tab label="RSA Documentation" />
-                </Tabs>
-
-                <TabPanel value={tabValue} index={0}>
-                  <Typography variant="h6" gutterBottom>
-                    HMAC Authentication
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" paragraph>
-                    HMAC uses a shared secret to sign requests. Include these headers in your API requests:
-                  </Typography>
-                  
-                  <Accordion>
-                    <AccordionSummary expandIcon={<ExpandMore />}>
-                      <Typography variant="subtitle2">JavaScript/Node.js Example</Typography>
-                    </AccordionSummary>
-                    <AccordionDetails>
-                      <Box component="pre" sx={{ 
-                        backgroundColor: 'grey.100', 
-                        p: 2, 
-                        borderRadius: 1, 
-                        overflow: 'auto',
-                        fontSize: '0.875rem',
-                        fontFamily: 'monospace'
-                      }}>
-{`const crypto = require('crypto');
-
-const secret = 'your-secret-key';
-const keyID = 'your-key-id';
-const nonce = Math.random().toString(36).substring(2, 15);
-const timestamp = Math.floor(Date.now() / 1000);
-const method = 'POST';
-const host = 'api.mustody.com';
-const requestBody = JSON.stringify({ /* your data */ });
-
-// Create body hash
-const bodyHash = crypto.createHmac('sha256', secret)
-  .update(requestBody)
-  .digest('hex');
-
-// Create signature
-const signingString = \`\${host}\${method}\${timestamp}\${nonce}\${keyID}\`;
-const signature = crypto.createHmac('sha256', secret)
-  .update(signingString)
-  .digest('hex');
-
-// Headers
-const headers = {
-  'Key-ID': keyID,
-  'Nonce': nonce,
-  'Timestamp': timestamp.toString(),
-  'Hash': bodyHash,
-  'Signature': signature,
-  'Content-Type': 'application/json'
-};`}
-                      </Box>
-                    </AccordionDetails>
-                  </Accordion>
-
-                  <Accordion>
-                    <AccordionSummary expandIcon={<ExpandMore />}>
-                      <Typography variant="subtitle2">C# .NET Example</Typography>
-                    </AccordionSummary>
-                    <AccordionDetails>
-                      <Box component="pre" sx={{ 
-                        backgroundColor: 'grey.100', 
-                        p: 2, 
-                        borderRadius: 1, 
-                        overflow: 'auto',
-                        fontSize: '0.875rem',
-                        fontFamily: 'monospace'
-                      }}>
-{`using System.Security.Cryptography;
-using System.Text;
-
-var secret = "your-secret-key";
-var keyId = "your-key-id";
-var nonce = Guid.NewGuid().ToString("N")[..12];
-var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-var method = "POST";
-var host = "api.mustody.com";
-var requestBody = "{\\"data\\": \\"value\\"}";
-
-// Create body hash
-using var hmacBody = new HMACSHA256(Encoding.UTF8.GetBytes(secret));
-var bodyHash = Convert.ToHexString(hmacBody.ComputeHash(
-  Encoding.UTF8.GetBytes(requestBody))).ToLower();
-
-// Create signature
-var signingString = $"{host}{method}{timestamp}{nonce}{keyId}";
-using var hmacSig = new HMACSHA256(Encoding.UTF8.GetBytes(secret));
-var signature = Convert.ToHexString(hmacSig.ComputeHash(
-  Encoding.UTF8.GetBytes(signingString))).ToLower();
-
-// Add headers to HttpClient
-client.DefaultRequestHeaders.Add("Key-ID", keyId);
-client.DefaultRequestHeaders.Add("Nonce", nonce);
-client.DefaultRequestHeaders.Add("Timestamp", timestamp.ToString());
-client.DefaultRequestHeaders.Add("Hash", bodyHash);
-client.DefaultRequestHeaders.Add("Signature", signature);`}
-                      </Box>
-                    </AccordionDetails>
-                  </Accordion>
-                </TabPanel>
-
-                <TabPanel value={tabValue} index={1}>
-                  <Typography variant="h6" gutterBottom>
-                    RSA Authentication
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" paragraph>
-                    RSA authentication uses public/private key pairs. Generate your keys and register the public key.
-                  </Typography>
-
-                  <Accordion>
-                    <AccordionSummary expandIcon={<ExpandMore />}>
-                      <Typography variant="subtitle2">Generate RSA Key Pair</Typography>
-                    </AccordionSummary>
-                    <AccordionDetails>
-                      <Typography variant="body2" gutterBottom>
-                        Generate your RSA key pair using OpenSSL:
-                      </Typography>
-                      <Box component="pre" sx={{ 
-                        backgroundColor: 'grey.100', 
-                        p: 2, 
-                        borderRadius: 1, 
-                        overflow: 'auto',
-                        fontSize: '0.875rem',
-                        fontFamily: 'monospace'
-                      }}>
-{`# Generate private key
-openssl ecparam -name prime256v1 -genkey -noout -out priv_key.pem
-
-# Generate public key
-openssl pkey -in priv_key.pem -pubout -out pub_key.pem`}
-                      </Box>
-                    </AccordionDetails>
-                  </Accordion>
-
-                  <Accordion>
-                    <AccordionSummary expandIcon={<ExpandMore />}>
-                      <Typography variant="subtitle2">Node.js RSA Example</Typography>
-                    </AccordionSummary>
-                    <AccordionDetails>
-                      <Box component="pre" sx={{ 
-                        backgroundColor: 'grey.100', 
-                        p: 2, 
-                        borderRadius: 1, 
-                        overflow: 'auto',
-                        fontSize: '0.875rem',
-                        fontFamily: 'monospace'
-                      }}>
-{`const crypto = require('crypto');
-const fs = require('fs');
-
-const privateKey = fs.readFileSync('priv_key.pem', 'utf8');
-const keyId = 'your-key-id';
-const nonce = Math.random().toString(36).substring(2, 15);
-const timestamp = Math.floor(Date.now() / 1000);
-const method = 'POST';
-const host = 'api.mustody.com';
-const requestBody = JSON.stringify({ /* your data */ });
-
-// Create body hash
-const bodyHash = crypto.createHash('sha256')
-  .update(requestBody)
-  .digest('base64');
-
-// Create signature string
-const signingString = \`\${host}\${method}\${timestamp}\${nonce}\${keyId}\`;
-
-// Sign with private key
-const signature = crypto.sign('sha256', Buffer.from(signingString), {
-  key: privateKey,
-  format: 'pem'
-}).toString('base64');
-
-// OAuth header
-const oauthHeader = \`OAuth oauth_consumer_key="\${keyId}",\` +
-  \`oauth_signature_method="RSA-SHA256",\` +
-  \`oauth_timestamp="\${timestamp}",\` +
-  \`oauth_nonce="\${nonce}",\` +
-  \`oauth_body_hash="\${bodyHash}",\` +
-  \`oauth_signature="\${signature}"\`;
-
-const headers = {
-  'Authorization': oauthHeader,
-  'Content-Type': 'application/json'
-};`}
-                      </Box>
-                    </AccordionDetails>
-                  </Accordion>
-
-                  <Accordion>
-                    <AccordionSummary expandIcon={<ExpandMore />}>
-                      <Typography variant="subtitle2">C# .NET RSA Example</Typography>
-                    </AccordionSummary>
-                    <AccordionDetails>
-                      <Box component="pre" sx={{ 
-                        backgroundColor: 'grey.100', 
-                        p: 2, 
-                        borderRadius: 1, 
-                        overflow: 'auto',
-                        fontSize: '0.875rem',
-                        fontFamily: 'monospace'
-                      }}>
-{`using System.Security.Cryptography;
-using System.Text;
-
-var privateKeyPem = File.ReadAllText("priv_key.pem");
-var keyId = "your-key-id";
-var nonce = Guid.NewGuid().ToString("N")[..12];
-var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-var method = "POST";
-var host = "api.mustody.com";
-var requestBody = "{\\"data\\": \\"value\\"}";
-
-// Create body hash
-var bodyHash = Convert.ToBase64String(
-  SHA256.HashData(Encoding.UTF8.GetBytes(requestBody)));
-
-// Create signature string
-var signingString = $"{host}{method}{timestamp}{nonce}{keyId}";
-
-// Load private key and sign
-using var rsa = RSA.Create();
-rsa.ImportFromPem(privateKeyPem);
-var signature = Convert.ToBase64String(
-  rsa.SignData(Encoding.UTF8.GetBytes(signingString), 
-    HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1));
-
-// Create OAuth header
-var oauthHeader = $"OAuth oauth_consumer_key=\\"{keyId}\\","
-  + $"oauth_signature_method=\\"RSA-SHA256\\","
-  + $"oauth_timestamp=\\"{timestamp}\\","
-  + $"oauth_nonce=\\"{nonce}\\","
-  + $"oauth_body_hash=\\"{bodyHash}\\","
-  + $"oauth_signature=\\"{signature}\\"";
-
-client.DefaultRequestHeaders.Authorization = 
-  new System.Net.Http.Headers.AuthenticationHeaderValue("OAuth", oauthHeader);`}
-                      </Box>
-                    </AccordionDetails>
-                  </Accordion>
-                </TabPanel>
-              </Box>
             </DialogContent>
             <DialogActions>
               <Button onClick={handleCloseDialog}>Cancel</Button>

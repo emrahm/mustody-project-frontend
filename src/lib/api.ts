@@ -170,8 +170,8 @@ export const tenantAPI = {
 export const apiKeyAPI = {
   getApiKeys: () => api.get('/api-keys'),
   
-  createApiKey: (name: string, permissions: string[], expires_at?: string) =>
-    api.post('/api-keys', { name, permissions, expires_at }),
+  createApiKey: (name: string, permissions: string[], expires_at?: string | null, auth_type?: 'hmac' | 'rsa', public_key?: string) =>
+    api.post('/api-keys', { name, permissions, expires_at, auth_type, public_key }),
   
   updateApiKey: (id: number, name: string, permissions: string[]) =>
     api.put(`/api-keys/${id}`, { name, permissions }),

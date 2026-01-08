@@ -12,7 +12,8 @@ import LoginMUI from "./pages/LoginMUI";
 import RegisterMUI from "./pages/RegisterMUI";
 import DashboardMUI from "./pages/DashboardMUI";
 import VerifyEmail from "./pages/VerifyEmail";
-import ApiKeysManagementMUI from "./pages/ApiKeysManagementMUI";
+import ApiKeysPage from "./pages/ApiKeysPage";
+import ApiDocumentationPage from "./pages/ApiDocumentationPage";
 import AdminLogin from "./pages/AdminLogin";
 import CompanyManagement from "./pages/CompanyManagement";
 import UserManagement from "./pages/UserManagement";
@@ -53,8 +54,8 @@ function Router() {
       <Route path="/register" component={RegisterMUI} />
       <Route path="/dashboard" component={() => <ProtectedRoute><DashboardMUI /></ProtectedRoute>} />
       <Route path="/verify-email" component={VerifyEmail} />
-      <Route path="/api-keys" component={ApiKeyManagementPage} />
-      <Route path="/api-keys-old" component={ApiKeysManagementMUI} />
+      <Route path="/api-keys" component={() => <ProtectedRoute><ApiKeysPage /></ProtectedRoute>} />
+      <Route path="/api-docs" component={() => <ProtectedRoute><ApiDocumentationPage /></ProtectedRoute>} />
       <Route path="/admin/login" component={AdminLogin} />
       <Route path="/admin/dashboard" component={AdminDashboard} />
       <Route path="/tenant-admin/dashboard" component={TenantAdminDashboard} />
