@@ -44,6 +44,7 @@ import { Homepage } from "./pages/Homepage";
 import { ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { theme } from './theme/theme';
+import ApiKeysManagement from "./pages/ApiKeysManagementMUI";
 
 function Router() {
   return (

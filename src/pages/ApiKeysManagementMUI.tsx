@@ -139,11 +139,10 @@ export default function ApiKeysManagement() {
   const loadApiKeys = async () => {
     try {
       const response = await apiKeyAPI.getApiKeys();
-      // Debug info DOM'a yaz
-      document.title = `API Keys: ${response.data?.length || 0}`;
-      setApiKeys(Array.isArray(response.data) ? response.data : []);
+      const apiKeysData = response?.data?.data || response?.data || [];
+      setApiKeys(Array.isArray(apiKeysData) ? apiKeysData : []);
     } catch (error) {
-      document.title = `Error: ${error.message}`;
+      console.error('Error loading API keys:', error);
       setApiKeys([]);
     }
   };
