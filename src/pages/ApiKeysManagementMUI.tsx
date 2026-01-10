@@ -139,9 +139,11 @@ export default function ApiKeysManagement() {
   const loadApiKeys = async () => {
     try {
       const response = await apiKeyAPI.getApiKeys();
+      // Debug info DOM'a yaz
+      document.title = `API Keys: ${response.data?.length || 0}`;
       setApiKeys(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
-      console.error('Error loading API keys:', error);
+      document.title = `Error: ${error.message}`;
       setApiKeys([]);
     }
   };
@@ -162,11 +164,11 @@ export default function ApiKeysManagement() {
       if (data.authType === 'hmac') {
         setGeneratedKey({
           secret: response.data.secret,
-          keyId: response.data.key_id,
+          keyId: response.data.keyId,
         });
       } else {
         setGeneratedKey({
-          keyId: response.data.key_id,
+          keyId: response.data.keyId,
         });
       }
       
@@ -181,7 +183,7 @@ export default function ApiKeysManagement() {
 
   const handleToggleActive = async (id: string, isActive: boolean) => {
     try {
-      await apiKeyAPI.toggleApiKey(parseInt(id), !isActive);
+      await apiKeyAPI.toggleApiKey(id, !isActive);
       await loadApiKeys();
     } catch (error) {
       console.error('Error toggling API key:', error);
@@ -190,7 +192,7 @@ export default function ApiKeysManagement() {
 
   const handleDelete = async (id: string) => {
     try {
-      await apiKeyAPI.deleteApiKey(parseInt(id));
+      await apiKeyAPI.deleteApiKey(id);
       await loadApiKeys();
     } catch (error) {
       console.error('Error deleting API key:', error);

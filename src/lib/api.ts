@@ -1,7 +1,10 @@
 import axios from 'axios';
 
 // Backend API base URL
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
+
+// Backend server base URL (for static files like avatars)
+export const SERVER_BASE_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:8080';
 
 // Create axios instance
 export const api = axios.create({
@@ -173,13 +176,13 @@ export const apiKeyAPI = {
   createApiKey: (name: string, permissions: string[], expires_at?: string | null, auth_type?: 'hmac' | 'rsa', public_key?: string) =>
     api.post('/api-keys', { name, permissions, expires_at, auth_type, public_key }),
   
-  updateApiKey: (id: number, name: string, permissions: string[]) =>
+  updateApiKey: (id: string, name: string, permissions: string[]) =>
     api.put(`/api-keys/${id}`, { name, permissions }),
   
-  deleteApiKey: (id: number) =>
+  deleteApiKey: (id: string) =>
     api.delete(`/api-keys/${id}`),
   
-  toggleApiKey: (id: number, is_active: boolean) =>
+  toggleApiKey: (id: string, is_active: boolean) =>
     api.patch(`/api-keys/${id}/toggle`, { is_active }),
 };
 
