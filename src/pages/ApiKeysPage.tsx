@@ -107,9 +107,10 @@ export default function ApiKeysPage() {
   const loadApiKeys = async () => {
     try {
       const response = await apiKeyAPI.getApiKeys();
-      setApiKeys(response.data);
+      setApiKeys(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Error loading API keys:', error);
+      setApiKeys([]);
     }
   };
 
