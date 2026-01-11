@@ -81,6 +81,11 @@ export default function ApiKeysPage() {
   const [open, setOpen] = useState(false);
   const [generatedKey, setGeneratedKey] = useState<{secret?: string; keyId: string} | null>(null);
   const [loading, setLoading] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    type: 'delete' | 'disable';
+    apiKey: ApiKey | null;
+  }>({ open: false, type: 'delete', apiKey: null });
 
   const {
     control,
@@ -128,16 +133,10 @@ export default function ApiKeysPage() {
         data.authType === 'rsa' ? data.publicKey : undefined
       );
       
-      if (data.authType === 'hmac') {
-        setGeneratedKey({
-          secret: response.data.secret,
-          keyId: response.data.keyId,
-        });
-      } else {
-        setGeneratedKey({
-          keyId: response.data.keyId,
-        });
-      }
+      setGeneratedKey({
+        keyId: response.data.keyId,
+        secret: data.authType === 'hmac' ? response.data.secret : undefined,
+      });
       
       await loadApiKeys();
       reset();
@@ -148,21 +147,35 @@ export default function ApiKeysPage() {
     }
   };
 
-  const handleToggleActive = async (id: string, isActive: boolean) => {
-    try {
-      await apiKeyAPI.toggleApiKey(id, !isActive);
-      await loadApiKeys();
-    } catch (error) {
-      console.error('Error toggling API key:', error);
-    }
+  const handleToggleActive = async (apiKey: ApiKey) => {
+    setConfirmDialog({
+      open: true,
+      type: 'disable',
+      apiKey
+    });
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (apiKey: ApiKey) => {
+    setConfirmDialog({
+      open: true,
+      type: 'delete',
+      apiKey
+    });
+  };
+
+  const handleConfirmAction = async () => {
+    if (!confirmDialog.apiKey) return;
+    
     try {
-      await apiKeyAPI.deleteApiKey(id);
+      if (confirmDialog.type === 'delete') {
+        await apiKeyAPI.deleteApiKey(confirmDialog.apiKey.id);
+      } else {
+        await apiKeyAPI.toggleApiKey(confirmDialog.apiKey.id, !confirmDialog.apiKey.isActive);
+      }
       await loadApiKeys();
+      setConfirmDialog({ open: false, type: 'delete', apiKey: null });
     } catch (error) {
-      console.error('Error deleting API key:', error);
+      console.error(`Error ${confirmDialog.type === 'delete' ? 'deleting' : 'toggling'} API key:`, error);
     }
   };
 
@@ -353,7 +366,7 @@ export default function ApiKeysPage() {
                         <Tooltip title={apiKey.isActive ? 'Disable' : 'Enable'}>
                           <IconButton 
                             size="small" 
-                            onClick={() => handleToggleActive(apiKey.id, apiKey.isActive)}
+                            onClick={() => handleToggleActive(apiKey)}
                             color={apiKey.isActive ? 'warning' : 'success'}
                           >
                             <PowerSettingsNew fontSize="small" />
@@ -363,7 +376,7 @@ export default function ApiKeysPage() {
                           <IconButton 
                             size="small" 
                             color="error"
-                            onClick={() => handleDelete(apiKey.id)}
+                            onClick={() => handleDelete(apiKey)}
                           >
                             <Delete fontSize="small" />
                           </IconButton>
@@ -384,39 +397,63 @@ export default function ApiKeysPage() {
             <DialogContent>
               {generatedKey && (
                 <Alert severity="success" sx={{ mb: 3 }}>
-                  <Typography variant="subtitle2" gutterBottom>
-                    API Key Created Successfully!
+                  <Typography variant="h6" gutterBottom sx={{ color: 'success.dark' }}>
+                    🎉 API Key Created Successfully!
                   </Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
-                    <Typography variant="body2" fontWeight="bold">
-                      Key ID: 
-                    </Typography>
-                    <Typography variant="body2" fontFamily="monospace" sx={{ flex: 1 }}>
-                      {generatedKey.keyId}
-                    </Typography>
-                    <IconButton size="small" onClick={() => copyToClipboard(generatedKey.keyId)}>
-                      <ContentCopy fontSize="small" />
-                    </IconButton>
-                  </Box>
-                  {generatedKey.secret && (
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
-                      <Typography variant="body2" fontWeight="bold">
-                        Secret: 
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    Please copy these credentials now. The secret will not be shown again for security reasons.
+                  </Typography>
+                  
+                  <Box sx={{ mt: 2, p: 2, backgroundColor: 'grey.50', borderRadius: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                      <Typography variant="body2" fontWeight="bold" sx={{ minWidth: '80px' }}>
+                        Key ID:
                       </Typography>
-                      <Typography variant="body2" fontFamily="monospace" sx={{ flex: 1 }}>
-                        {generatedKey.secret}
-                      </Typography>
-                      <IconButton size="small" onClick={() => copyToClipboard(generatedKey.secret!)}>
+                      <TextField
+                        value={generatedKey.keyId}
+                        variant="outlined"
+                        size="small"
+                        fullWidth
+                        InputProps={{
+                          readOnly: true,
+                          style: { fontFamily: 'monospace', fontSize: '0.875rem' }
+                        }}
+                      />
+                      <IconButton size="small" onClick={() => copyToClipboard(generatedKey.keyId)}>
                         <ContentCopy fontSize="small" />
                       </IconButton>
                     </Box>
-                  )}
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-                    {generatedKey.secret 
-                      ? 'Make sure to copy your secret now. You won\'t be able to see it again!'
-                      : 'Your RSA key has been registered. Use your private key for signing requests.'
-                    }
-                  </Typography>
+                    
+                    {generatedKey.secret && (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography variant="body2" fontWeight="bold" sx={{ minWidth: '80px' }}>
+                          Secret:
+                        </Typography>
+                        <TextField
+                          value={generatedKey.secret}
+                          variant="outlined"
+                          size="small"
+                          fullWidth
+                          InputProps={{
+                            readOnly: true,
+                            style: { fontFamily: 'monospace', fontSize: '0.875rem' }
+                          }}
+                        />
+                        <IconButton size="small" onClick={() => copyToClipboard(generatedKey.secret!)}>
+                          <ContentCopy fontSize="small" />
+                        </IconButton>
+                      </Box>
+                    )}
+                  </Box>
+                  
+                  <Alert severity="warning" sx={{ mt: 2 }}>
+                    <Typography variant="body2">
+                      ⚠️ {generatedKey.secret 
+                        ? 'Store your secret securely! You won\'t be able to see it again after closing this dialog.'
+                        : 'Your RSA key has been registered. Use your private key for signing requests.'
+                      }
+                    </Typography>
+                  </Alert>
                 </Alert>
               )}
 
@@ -503,6 +540,37 @@ export default function ApiKeysPage() {
               </Button>
             </DialogActions>
           </form>
+        </Dialog>
+
+        {/* Confirmation Dialog */}
+        <Dialog open={confirmDialog.open} onClose={() => setConfirmDialog({ open: false, type: 'delete', apiKey: null })}>
+          <DialogTitle>
+            {confirmDialog.type === 'delete' ? 'Delete API Key' : 
+             confirmDialog.apiKey?.isActive ? 'Disable API Key' : 'Enable API Key'}
+          </DialogTitle>
+          <DialogContent>
+            <Typography>
+              {confirmDialog.type === 'delete' 
+                ? `Are you sure you want to delete the API key "${confirmDialog.apiKey?.name}"? This action cannot be undone and will immediately revoke access for any applications using this key.`
+                : confirmDialog.apiKey?.isActive 
+                  ? `Are you sure you want to disable the API key "${confirmDialog.apiKey?.name}"? Applications using this key will lose access until it's re-enabled.`
+                  : `Are you sure you want to enable the API key "${confirmDialog.apiKey?.name}"?`
+              }
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setConfirmDialog({ open: false, type: 'delete', apiKey: null })}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleConfirmAction} 
+              color={confirmDialog.type === 'delete' ? 'error' : 'primary'}
+              variant="contained"
+            >
+              {confirmDialog.type === 'delete' ? 'Delete' : 
+               confirmDialog.apiKey?.isActive ? 'Disable' : 'Enable'}
+            </Button>
+          </DialogActions>
         </Dialog>
       </Box>
     </DashboardLayout>
