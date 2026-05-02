@@ -39,6 +39,7 @@ import {
   Description,
   Message,
   CloudSync,
+  AccountBalanceWallet,
 } from '@mui/icons-material';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/contexts/AuthContext';
@@ -66,6 +67,7 @@ const iconMap: { [key: string]: React.ReactElement } = {
   'Security': <Security />,
   'Settings': <Settings />,
   'Support': <Support />,
+  'AccountBalanceWallet': <AccountBalanceWallet />,
 };
 
 const menuCategories = {

@@ -186,6 +186,38 @@ export const apiKeyAPI = {
     api.patch(`/api-keys/${id}/toggle`, { is_active }),
 };
 
+// Admin API endpoints
+export interface AdminUser {
+  id: string;
+  name: string;
+  email: string;
+  user_status: string;
+  email_verified: boolean;
+  two_factor_enabled: boolean;
+  kyc_status: string;
+  created_at: string;
+  updated_at: string;
+  tenant_id: string;
+  members?: Array<{ role: string; tenant: { id: string; name: string; slug: string } }>;
+  roles?: Array<{ role: string; tenant_id: string }>;
+}
+
+export const adminAPI = {
+  getUsers: (page = 1, limit = 20) =>
+    api.get<{ users: AdminUser[]; total: number; page: number; limit: number }>(
+      `/admin/users?page=${page}&limit=${limit}`
+    ),
+
+  updateUserStatus: (userId: string, status: string) =>
+    api.put(`/admin/users/${userId}/status`, { status }),
+
+  deleteUser: (userId: string) =>
+    api.delete(`/admin/users/${userId}`),
+
+  reset2FA: (userId: string) =>
+    api.delete(`/admin/users/${userId}/2fa`),
+};
+
 // Notification API endpoints
 export const notificationAPI = {
   getNotifications: (params?: { page?: number; limit?: number; unread_only?: boolean }) =>
@@ -202,6 +234,70 @@ export const notificationAPI = {
   
   sendNotification: (data: { user_id: string; title: string; message: string; type?: string; data?: any }) =>
     api.post('/notifications/send', data),
+};
+
+// Wallet types
+export interface UserWallet {
+  id: string;
+  user_id: string;
+  tenant_id: string;
+  external_user_id: string;
+  mpc_chain_type: 'EVM' | 'COSMOS' | 'SOLANA';
+  public_address: string;
+  mpc_wallet_id: string;
+  status: 'pending' | 'active' | 'failed';
+  failure_reason?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChainDefinition {
+  chain_id: string;
+  display_name: string;
+  mpc_chain_type: 'EVM' | 'COSMOS' | 'SOLANA';
+  evm_chain_id?: number;
+  rpc_url: string;
+  native_symbol: string;
+  native_decimals: number;
+  explorer_url?: string;
+  is_active: boolean;
+}
+
+export interface WalletBalance {
+  chain_id: string;
+  symbol: string;
+  balance: string;       // raw string from RPC
+  balance_usd?: string;
+  updated_at: string;
+}
+
+export interface WalletUser {
+  id: string;
+  name: string;
+  email: string;
+  avatar_url?: string;
+}
+
+export const walletAPI = {
+  // Get wallets for the current user (or a specific user if tenant admin)
+  getWallets: (userId?: string) =>
+    api.get<{ wallets: UserWallet[] }>('/wallet', { params: userId ? { user_id: userId } : undefined }),
+
+  // Create a wallet for a given chain type
+  createWallet: (mpc_chain_type: 'EVM' | 'COSMOS' | 'SOLANA', external_user_id?: string) =>
+    api.post<UserWallet>('/wallet/create', { mpc_chain_type, external_user_id }),
+
+  // Get balance for a wallet on a specific chain
+  getBalance: (wallet_id: string, chain_id: string) =>
+    api.get<WalletBalance>(`/wallet/${wallet_id}/balance`, { params: { chain_id } }),
+
+  // Get all supported chains
+  getChains: () =>
+    api.get<{ chains: ChainDefinition[] }>('/blockchain/param/chains'),
+
+  // Tenant admin: look up a user's wallets by user_id
+  getUserWallets: (userId: string) =>
+    api.get<{ wallets: UserWallet[]; user: WalletUser }>(`/wallet/user/${userId}`),
 };
 
 export default api;

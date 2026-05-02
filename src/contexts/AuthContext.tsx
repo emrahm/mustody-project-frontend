@@ -117,6 +117,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Generate menu based on roles
     const menuItems: MenuItem[] = [
       { id: '1', label: 'Dashboard', path: '/dashboard', icon: 'Dashboard', roles: [], order: 1 },
+      { id: '20', label: 'Wallet', path: '/wallet', icon: 'AccountBalanceWallet', roles: [], order: 2 },
     ];
 
     const allRoles = userData.roles || [userData.role];

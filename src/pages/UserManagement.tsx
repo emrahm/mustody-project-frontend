@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Card,
@@ -26,65 +26,55 @@ import {
   Avatar,
   Menu,
   Alert,
+  CircularProgress,
+  Pagination,
 } from '@mui/material';
 import {
   People,
   MoreVert,
   Check,
   Close,
-  Edit,
   Delete,
   PersonAdd,
   Security,
-  Business,
+  Refresh,
 } from '@mui/icons-material';
 import DashboardLayout from '@/components/DashboardLayout';
-
-const mockUsers = [
-  {
-    id: '1',
-    name: 'John Doe',
-    email: 'john@techcorp.com',
-    company: 'TechCorp Inc.',
-    role: 'tenant_admin',
-    status: 'active',
-    emailVerified: true,
-    twoFactorEnabled: true,
-    lastLogin: '2024-01-20',
-    createdAt: '2024-01-15',
-  },
-  {
-    id: '2',
-    name: 'Jane Smith',
-    email: 'jane@techcorp.com',
-    company: 'TechCorp Inc.',
-    role: 'tenant_user',
-    status: 'pending',
-    emailVerified: false,
-    twoFactorEnabled: false,
-    lastLogin: null,
-    createdAt: '2024-01-20',
-  },
-  {
-    id: '3',
-    name: 'Bob Wilson',
-    email: 'bob@startupxyz.io',
-    company: 'StartupXYZ',
-    role: 'owner',
-    status: 'active',
-    emailVerified: true,
-    twoFactorEnabled: false,
-    lastLogin: '2024-01-19',
-    createdAt: '2024-01-18',
-  },
-];
+import { adminAPI, AdminUser } from '@/lib/api';
 
 export default function UserManagement() {
-  const [users, setUsers] = useState(mockUsers);
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
-  const [roleDialog, setRoleDialog] = useState(false);
-  const [newRole, setNewRole] = useState('');
+  const [statusDialog, setStatusDialog] = useState(false);
+  const [newStatus, setNewStatus] = useState('');
+  const [actionLoading, setActionLoading] = useState(false);
+  const [deleteDialog, setDeleteDialog] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<string | null>(null);
+
+  const limit = 20;
+
+  const fetchUsers = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await adminAPI.getUsers(page, limit);
+      setUsers(res.data.users ?? []);
+      setTotal(res.data.total ?? 0);
+    } catch (err: any) {
+      setError(err?.response?.data?.error ?? 'Failed to load users');
+    } finally {
+      setLoading(false);
+    }
+  }, [page]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
   const handleMenuClick = (event: React.MouseEvent<HTMLElement>, userId: string) => {
     setAnchorEl(event.currentTarget);
@@ -96,63 +86,83 @@ export default function UserManagement() {
     setSelectedUser(null);
   };
 
-  const handleApprove = (id: string) => {
-    setUsers(prev => prev.map(user => 
-      user.id === id ? { ...user, status: 'active' } : user
-    ));
-    handleMenuClose();
+  const handleUpdateStatus = async () => {
+    if (!selectedUser || !newStatus) return;
+    setActionLoading(true);
+    try {
+      await adminAPI.updateUserStatus(selectedUser, newStatus);
+      setUsers(prev => prev.map(u => u.id === selectedUser ? { ...u, user_status: newStatus } : u));
+      setStatusDialog(false);
+      setNewStatus('');
+      handleMenuClose();
+    } catch (err: any) {
+      setError(err?.response?.data?.error ?? 'Failed to update status');
+    } finally {
+      setActionLoading(false);
+    }
   };
 
-  const handleReject = (id: string) => {
-    setUsers(prev => prev.map(user => 
-      user.id === id ? { ...user, status: 'rejected' } : user
-    ));
-    handleMenuClose();
-  };
-
-  const handleChangeRole = () => {
-    if (selectedUser && newRole) {
-      setUsers(prev => prev.map(user => 
-        user.id === selectedUser ? { ...user, role: newRole } : user
-      ));
-      setRoleDialog(false);
-      setNewRole('');
+  const handleDelete = async (id: string) => {
+    setActionLoading(true);
+    try {
+      await adminAPI.deleteUser(id);
+      setUsers(prev => prev.filter(u => u.id !== id));
+      setTotal(prev => prev - 1);
+    } catch (err: any) {
+      setError(err?.response?.data?.error ?? 'Failed to delete user');
+    } finally {
+      setActionLoading(false);
+      setDeleteDialog(false);
+      setUserToDelete(null);
       handleMenuClose();
     }
   };
 
-  const handleDelete = (id: string) => {
-    setUsers(prev => prev.filter(user => user.id !== id));
-    handleMenuClose();
+  const handleReset2FA = async (id: string) => {
+    setActionLoading(true);
+    try {
+      await adminAPI.reset2FA(id);
+      setUsers(prev => prev.map(u => u.id === id ? { ...u, two_factor_enabled: false } : u));
+    } catch (err: any) {
+      setError(err?.response?.data?.error ?? 'Failed to reset 2FA');
+    } finally {
+      setActionLoading(false);
+      handleMenuClose();
+    }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active': return 'success';
-      case 'pending': return 'warning';
-      case 'rejected': return 'error';
-      case 'suspended': return 'default';
+      case 'suspended': return 'error';
+      case 'inactive': return 'default';
+      case 'invited': return 'warning';
       default: return 'default';
     }
+  };
+
+  const getUserRole = (user: AdminUser): string => {
+    if (user.roles?.length) return user.roles[0].role;
+    if (user.members?.length) return user.members[0].role;
+    return 'user';
   };
 
   const getRoleColor = (role: string) => {
     switch (role) {
+      case 'admin': return 'error';
       case 'owner': return 'error';
       case 'tenant_admin': return 'warning';
-      case 'tenant_user': return 'info';
-      default: return 'default';
+      default: return 'info';
     }
   };
 
-  const getRoleLabel = (role: string) => {
-    switch (role) {
-      case 'owner': return 'Owner';
-      case 'tenant_admin': return 'Admin';
-      case 'tenant_user': return 'User';
-      default: return role;
-    }
+  const getUserCompany = (user: AdminUser): string => {
+    if (user.members?.length) return user.members[0].tenant?.name ?? '-';
+    return '-';
   };
+
+  const activeCount = users.filter(u => u.user_status === 'active').length;
+  const twoFACount = users.filter(u => u.two_factor_enabled).length;
 
   return (
     <DashboardLayout>
@@ -167,7 +177,21 @@ export default function UserManagement() {
               Manage user registrations, roles, and permissions
             </Typography>
           </Box>
+          <Button
+            variant="outlined"
+            startIcon={<Refresh />}
+            onClick={fetchUsers}
+            disabled={loading}
+          >
+            Refresh
+          </Button>
         </Box>
+
+        {error && (
+          <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
+            {error}
+          </Alert>
+        )}
 
         {/* Stats Cards */}
         <Grid container spacing={3} sx={{ mb: 4 }}>
@@ -179,12 +203,8 @@ export default function UserManagement() {
                     <People />
                   </Box>
                   <Box>
-                    <Typography variant="h5" fontWeight="bold">
-                      {users.length}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Total Users
-                    </Typography>
+                    <Typography variant="h5" fontWeight="bold">{total}</Typography>
+                    <Typography variant="body2" color="text.secondary">Total Users</Typography>
                   </Box>
                 </Box>
               </CardContent>
@@ -198,12 +218,8 @@ export default function UserManagement() {
                     <Check />
                   </Box>
                   <Box>
-                    <Typography variant="h5" fontWeight="bold">
-                      {users.filter(u => u.status === 'active').length}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Active Users
-                    </Typography>
+                    <Typography variant="h5" fontWeight="bold">{activeCount}</Typography>
+                    <Typography variant="body2" color="text.secondary">Active Users</Typography>
                   </Box>
                 </Box>
               </CardContent>
@@ -218,11 +234,9 @@ export default function UserManagement() {
                   </Box>
                   <Box>
                     <Typography variant="h5" fontWeight="bold">
-                      {users.filter(u => u.status === 'pending').length}
+                      {users.filter(u => u.user_status === 'invited').length}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Pending Approval
-                    </Typography>
+                    <Typography variant="body2" color="text.secondary">Pending Approval</Typography>
                   </Box>
                 </Box>
               </CardContent>
@@ -236,12 +250,8 @@ export default function UserManagement() {
                     <Security />
                   </Box>
                   <Box>
-                    <Typography variant="h5" fontWeight="bold">
-                      {users.filter(u => u.twoFactorEnabled).length}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      2FA Enabled
-                    </Typography>
+                    <Typography variant="h5" fontWeight="bold">{twoFACount}</Typography>
+                    <Typography variant="body2" color="text.secondary">2FA Enabled</Typography>
                   </Box>
                 </Box>
               </CardContent>
@@ -255,144 +265,184 @@ export default function UserManagement() {
             <Typography variant="h6" fontWeight="600" gutterBottom>
               Registered Users
             </Typography>
-            
-            <TableContainer component={Paper} variant="outlined">
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>User</TableCell>
-                    <TableCell>Company</TableCell>
-                    <TableCell>Role</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Security</TableCell>
-                    <TableCell>Last Login</TableCell>
-                    <TableCell>Created</TableCell>
-                    <TableCell align="right">Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {users.map((user) => (
-                    <TableRow key={user.id} hover>
-                      <TableCell>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                          <Avatar sx={{ width: 32, height: 32 }}>
-                            {user.name.charAt(0)}
-                          </Avatar>
-                          <Box>
-                            <Typography variant="subtitle2" fontWeight="600">
-                              {user.name}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {user.email}
-                            </Typography>
-                          </Box>
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Business fontSize="small" color="action" />
-                          <Typography variant="body2">
-                            {user.company}
-                          </Typography>
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={getRoleLabel(user.role)}
-                          size="small"
-                          color={getRoleColor(user.role) as any}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={user.status}
-                          size="small"
-                          color={getStatusColor(user.status) as any}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Box sx={{ display: 'flex', gap: 0.5 }}>
-                          <Chip
-                            label={user.emailVerified ? 'Email ✓' : 'Email ✗'}
-                            size="small"
-                            color={user.emailVerified ? 'success' : 'default'}
-                            variant="outlined"
-                          />
-                          <Chip
-                            label={user.twoFactorEnabled ? '2FA ✓' : '2FA ✗'}
-                            size="small"
-                            color={user.twoFactorEnabled ? 'success' : 'default'}
-                            variant="outlined"
-                          />
-                        </Box>
-                      </TableCell>
-                      <TableCell>{user.lastLogin || 'Never'}</TableCell>
-                      <TableCell>{user.createdAt}</TableCell>
-                      <TableCell align="right">
-                        <IconButton 
-                          size="small"
-                          onClick={(e) => handleMenuClick(e, user.id)}
-                        >
-                          <MoreVert fontSize="small" />
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+
+            {loading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+                <CircularProgress />
+              </Box>
+            ) : (
+              <>
+                <TableContainer component={Paper} variant="outlined">
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>User</TableCell>
+                        <TableCell>Company</TableCell>
+                        <TableCell>Role</TableCell>
+                        <TableCell>Status</TableCell>
+                        <TableCell>Security</TableCell>
+                        <TableCell>Created</TableCell>
+                        <TableCell align="right">Actions</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {users.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                            <Typography color="text.secondary">No users found</Typography>
+                          </TableCell>
+                        </TableRow>
+                      ) : users.map((user) => (
+                        <TableRow key={user.id} hover>
+                          <TableCell>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                              <Avatar sx={{ width: 32, height: 32 }}>
+                                {user.name?.charAt(0) ?? '?'}
+                              </Avatar>
+                              <Box>
+                                <Typography variant="subtitle2" fontWeight="600">
+                                  {user.name}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  {user.email}
+                                </Typography>
+                              </Box>
+                            </Box>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2">{getUserCompany(user)}</Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Chip
+                              label={getUserRole(user)}
+                              size="small"
+                              color={getRoleColor(getUserRole(user)) as any}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Chip
+                              label={user.user_status}
+                              size="small"
+                              color={getStatusColor(user.user_status) as any}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Box sx={{ display: 'flex', gap: 0.5 }}>
+                              <Chip
+                                label={user.email_verified ? 'Email ✓' : 'Email ✗'}
+                                size="small"
+                                color={user.email_verified ? 'success' : 'default'}
+                                variant="outlined"
+                              />
+                              <Chip
+                                label={user.two_factor_enabled ? '2FA ✓' : '2FA ✗'}
+                                size="small"
+                                color={user.two_factor_enabled ? 'success' : 'default'}
+                                variant="outlined"
+                              />
+                            </Box>
+                          </TableCell>
+                          <TableCell>
+                            {user.created_at ? new Date(user.created_at).toLocaleDateString() : '-'}
+                          </TableCell>
+                          <TableCell align="right">
+                            <IconButton
+                              size="small"
+                              onClick={(e) => handleMenuClick(e, user.id)}
+                              disabled={actionLoading}
+                            >
+                              <MoreVert fontSize="small" />
+                            </IconButton>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+
+                {total > limit && (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+                    <Pagination
+                      count={Math.ceil(total / limit)}
+                      page={page}
+                      onChange={(_, value) => setPage(value)}
+                      color="primary"
+                    />
+                  </Box>
+                )}
+              </>
+            )}
           </CardContent>
         </Card>
 
         {/* Action Menu */}
-        <Menu
-          anchorEl={anchorEl}
-          open={Boolean(anchorEl)}
-          onClose={handleMenuClose}
-        >
-          <MenuItem onClick={() => handleApprove(selectedUser!)}>
+        <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
+          <MenuItem onClick={() => { setNewStatus('active'); setStatusDialog(true); handleMenuClose(); }}>
             <Check fontSize="small" sx={{ mr: 1 }} />
-            Approve User
+            Set Active
           </MenuItem>
-          <MenuItem onClick={() => handleReject(selectedUser!)}>
+          <MenuItem onClick={() => { setNewStatus('suspended'); setStatusDialog(true); handleMenuClose(); }}>
             <Close fontSize="small" sx={{ mr: 1 }} />
-            Reject User
+            Suspend User
           </MenuItem>
-          <MenuItem onClick={() => { setRoleDialog(true); handleMenuClose(); }}>
-            <Edit fontSize="small" sx={{ mr: 1 }} />
-            Change Role
+          <MenuItem onClick={() => selectedUser && handleReset2FA(selectedUser)}>
+            <Security fontSize="small" sx={{ mr: 1 }} />
+            Reset 2FA
           </MenuItem>
-          <MenuItem onClick={() => handleDelete(selectedUser!)} sx={{ color: 'error.main' }}>
+          <MenuItem onClick={() => { setUserToDelete(selectedUser); setDeleteDialog(true); handleMenuClose(); }} sx={{ color: 'error.main' }}>
             <Delete fontSize="small" sx={{ mr: 1 }} />
             Delete User
           </MenuItem>
         </Menu>
 
-        {/* Change Role Dialog */}
-        <Dialog open={roleDialog} onClose={() => setRoleDialog(false)} maxWidth="xs" fullWidth>
-          <DialogTitle>Change User Role</DialogTitle>
+        {/* Change Status Dialog */}
+        <Dialog open={statusDialog} onClose={() => setStatusDialog(false)} maxWidth="xs" fullWidth>
+          <DialogTitle>Update User Status</DialogTitle>
           <DialogContent>
             <Alert severity="warning" sx={{ mb: 3 }}>
-              Changing user roles will affect their access permissions immediately.
+              Changing user status will affect their access immediately.
             </Alert>
-            
             <FormControl fullWidth>
-              <InputLabel>New Role</InputLabel>
+              <InputLabel>New Status</InputLabel>
               <Select
-                value={newRole}
-                onChange={(e) => setNewRole(e.target.value)}
-                label="New Role"
+                value={newStatus}
+                onChange={(e) => setNewStatus(e.target.value)}
+                label="New Status"
               >
-                <MenuItem value="owner">Owner</MenuItem>
-                <MenuItem value="tenant_admin">Admin</MenuItem>
-                <MenuItem value="tenant_user">User</MenuItem>
+                <MenuItem value="active">Active</MenuItem>
+                <MenuItem value="suspended">Suspended</MenuItem>
+                <MenuItem value="inactive">Inactive</MenuItem>
               </Select>
             </FormControl>
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setRoleDialog(false)}>Cancel</Button>
-            <Button onClick={handleChangeRole} variant="contained">
-              Change Role
+            <Button onClick={() => setStatusDialog(false)}>Cancel</Button>
+            <Button onClick={handleUpdateStatus} variant="contained" disabled={actionLoading}>
+              {actionLoading ? <CircularProgress size={20} /> : 'Update Status'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Delete Confirm Dialog */}
+        <Dialog open={deleteDialog} onClose={() => setDeleteDialog(false)} maxWidth="xs" fullWidth>
+          <DialogTitle>Delete User</DialogTitle>
+          <DialogContent>
+            <Alert severity="error" sx={{ mb: 1 }}>
+              This action cannot be undone. The user will be deactivated and lose all access immediately.
+            </Alert>
+            <Typography variant="body2" color="text.secondary">
+              Are you sure you want to continue?
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setDeleteDialog(false)}>Cancel</Button>
+            <Button
+              onClick={() => userToDelete && handleDelete(userToDelete)}
+              variant="contained"
+              color="error"
+              disabled={actionLoading}
+            >
+              {actionLoading ? <CircularProgress size={20} /> : 'Delete'}
             </Button>
           </DialogActions>
         </Dialog>

@@ -45,6 +45,7 @@ import { ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { theme } from './theme/theme';
 import ApiKeysManagement from "./pages/ApiKeysManagementMUI";
+import WalletPage from "./pages/WalletPage";
 
 function Router() {
   return (
@@ -80,6 +81,7 @@ function Router() {
       <Route path="/tenant-request" component={TenantRequest} />
       <Route path="/invitation/:token" component={InvitationRegister} />
       <Route path="/audit-logs" component={() => <ProtectedRoute><AuditLogsMUI /></ProtectedRoute>} />
+      <Route path="/wallet" component={() => <ProtectedRoute><WalletPage /></ProtectedRoute>} />
       <Route path="/audit-logs-old" component={AuditLogs} />
       <Route component={NotFound} />
     </Switch>
