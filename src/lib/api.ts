@@ -247,6 +247,9 @@ export interface UserWallet {
   mpc_wallet_id: string;
   status: 'pending' | 'active' | 'failed';
   failure_reason?: string;
+  retry_count: number;
+  last_error?: string;
+  next_retry_at?: string;
   created_at: string;
   updated_at: string;
 }
@@ -298,6 +301,14 @@ export const walletAPI = {
   // Tenant admin: look up a user's wallets by user_id
   getUserWallets: (userId: string) =>
     api.get<{ wallets: UserWallet[]; user: WalletUser }>(`/wallet/user/${userId}`),
+};
+
+export const adminWalletAPI = {
+  getPendingWallets: () =>
+    api.get<{ count: number; wallets: UserWallet[] }>('/admin/wallets/pending'),
+
+  retryWallet: (walletId: string) =>
+    api.post<{ message: string; wallet: UserWallet }>(`/admin/wallets/${walletId}/retry`),
 };
 
 export default api;

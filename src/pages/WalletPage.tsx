@@ -11,11 +11,11 @@ import {
   AccountBalanceWallet, ContentCopy, OpenInNew, Refresh,
   Add, Search, CheckCircle, Error as ErrorIcon, HourglassEmpty,
   ArrowUpward, ArrowDownward, SwapHoriz, QrCode2, Visibility,
-  VisibilityOff, TrendingUp, Shield, Person, Close, Launch,
+  VisibilityOff, TrendingUp, Shield, Person, Close, Launch, Replay,
 } from '@mui/icons-material';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useAuth } from '@/contexts/AuthContext';
-import { walletAPI, UserWallet, ChainDefinition, WalletBalance } from '@/lib/api';
+import { walletAPI, adminWalletAPI, UserWallet, ChainDefinition, WalletBalance } from '@/lib/api';
 
 // ─── Chain visual config ────────────────────────────────────────────────────
 
@@ -278,17 +278,34 @@ function WalletCard({ wallet, chains, onRefreshBalance, balances, loadingBalance
           </Box>
         </Box>
 
-        {wallet.status === 'failed' && wallet.failure_reason && (
+        {wallet.status === 'failed' && (
           <Alert severity="error" sx={{ mt: 1.5, py: 0.5 }} icon={<ErrorIcon fontSize="small" />}>
-            {wallet.failure_reason}
+            {wallet.failure_reason || wallet.last_error || 'Wallet creation failed'}
+            {wallet.retry_count > 0 && (
+              <Typography variant="caption" display="block" sx={{ mt: 0.25, opacity: 0.8 }}>
+                Failed after {wallet.retry_count} attempt{wallet.retry_count !== 1 ? 's' : ''}
+              </Typography>
+            )}
           </Alert>
         )}
         {wallet.status === 'pending' && (
           <Box sx={{ mt: 1.5 }}>
             <LinearProgress color="warning" sx={{ borderRadius: 1 }} />
-            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-              Wallet creation in progress…
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 0.5 }}>
+              <Typography variant="caption" color="text.secondary">
+                Creating wallet… {wallet.retry_count > 0 && `(attempt ${wallet.retry_count + 1})`}
+              </Typography>
+              {wallet.next_retry_at && (
+                <Typography variant="caption" color="text.secondary">
+                  Next retry: {new Date(wallet.next_retry_at).toLocaleTimeString()}
+                </Typography>
+              )}
+            </Box>
+            {wallet.last_error && (
+              <Alert severity="warning" sx={{ mt: 0.75, py: 0.25, fontSize: '0.72rem' }}>
+                Last error: {wallet.last_error}
+              </Alert>
+            )}
           </Box>
         )}
       </CardContent>
@@ -528,6 +545,126 @@ function TenantUserSearch({ onSelect }: { onSelect: (userId: string, name: strin
   );
 }
 
+// ─── PendingWalletsPanel (admin only) ────────────────────────────────────────
+
+function PendingWalletsPanel() {
+  const theme = useTheme();
+  const [wallets, setWallets] = useState<UserWallet[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [retrying, setRetrying] = useState<string | null>(null);
+  const [snack, setSnack] = useState<{ open: boolean; msg: string; severity: 'success' | 'error' }>({
+    open: false, msg: '', severity: 'success',
+  });
+
+  const load = useCallback(async () => {
+    try {
+      const res = await adminWalletAPI.getPendingWallets();
+      setWallets(res.data.wallets ?? []);
+    } catch { /* silent */ }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleRetry = async (walletId: string) => {
+    setRetrying(walletId);
+    try {
+      const res = await adminWalletAPI.retryWallet(walletId);
+      const updated = res.data.wallet;
+      setWallets(prev => prev.map(w => w.id === walletId ? updated : w).filter(w => w.status === 'pending'));
+      setSnack({ open: true, msg: updated.status === 'active' ? 'Wallet activated!' : 'Retry triggered', severity: 'success' });
+    } catch (e: any) {
+      setSnack({ open: true, msg: e?.response?.data?.message || 'Retry failed', severity: 'error' });
+    } finally {
+      setRetrying(null);
+    }
+  };
+
+  if (loading) return null;
+  if (wallets.length === 0) return null;
+
+  return (
+    <Paper elevation={0} sx={{
+      mb: 3, borderRadius: 3,
+      border: `1px solid ${alpha(theme.palette.warning.main, 0.3)}`,
+      overflow: 'hidden',
+    }}>
+      <Box sx={{
+        px: 2.5, py: 1.5,
+        bgcolor: alpha(theme.palette.warning.main, 0.08),
+        borderBottom: `1px solid ${alpha(theme.palette.warning.main, 0.2)}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <HourglassEmpty sx={{ color: 'warning.main', fontSize: 18 }} />
+          <Typography variant="subtitle2" fontWeight={700} color="warning.dark">
+            Pending Wallets ({wallets.length})
+          </Typography>
+        </Box>
+        <Tooltip title="Refresh list">
+          <IconButton size="small" onClick={load}><Refresh fontSize="small" /></IconButton>
+        </Tooltip>
+      </Box>
+
+      <List disablePadding>
+        {wallets.map((w, i) => (
+          <ListItem
+            key={w.id}
+            divider={i < wallets.length - 1}
+            sx={{ px: 2.5, py: 1.5, alignItems: 'flex-start' }}
+            secondaryAction={
+              <Tooltip title="Retry now">
+                <span>
+                  <IconButton
+                    size="small" color="warning"
+                    disabled={retrying === w.id}
+                    onClick={() => handleRetry(w.id)}
+                  >
+                    {retrying === w.id
+                      ? <CircularProgress size={16} color="inherit" />
+                      : <Replay fontSize="small" />}
+                  </IconButton>
+                </span>
+              </Tooltip>
+            }
+          >
+            <ListItemText
+              primary={
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                  <Typography variant="body2" fontWeight={700}>{w.mpc_chain_type}</Typography>
+                  <Typography variant="caption" fontFamily="monospace" color="text.secondary">
+                    {w.user_id}
+                  </Typography>
+                  <Chip label={`${w.retry_count} attempt${w.retry_count !== 1 ? 's' : ''}`}
+                    size="small" color="warning" variant="outlined" sx={{ height: 18, fontSize: '0.65rem' }} />
+                  {w.next_retry_at && (
+                    <Typography variant="caption" color="text.secondary">
+                      next: {new Date(w.next_retry_at).toLocaleTimeString()}
+                    </Typography>
+                  )}
+                </Box>
+              }
+              secondary={w.last_error && (
+                <Typography variant="caption" color="error.main" sx={{ fontFamily: 'monospace', fontSize: '0.7rem' }}>
+                  {w.last_error}
+                </Typography>
+              )}
+            />
+          </ListItem>
+        ))}
+      </List>
+
+      <Snackbar open={snack.open} autoHideDuration={3000}
+        onClose={() => setSnack(s => ({ ...s, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+        <Alert severity={snack.severity} onClose={() => setSnack(s => ({ ...s, open: false }))}>
+          {snack.msg}
+        </Alert>
+      </Snackbar>
+    </Paper>
+  );
+}
+
 // ─── WalletPage ───────────────────────────────────────────────────────────────
 
 export default function WalletPage() {
@@ -570,6 +707,14 @@ export default function WalletPage() {
   }, [displayUser?.id, viewedUser]);
 
   useEffect(() => { loadWallets(); }, [loadWallets]);
+
+  // Auto-poll every 15s while any wallet is pending
+  useEffect(() => {
+    const hasPending = wallets.some(w => w.status === 'pending');
+    if (!hasPending) return;
+    const id = setInterval(loadWallets, 15_000);
+    return () => clearInterval(id);
+  }, [wallets, loadWallets]);
 
   const handleRefreshBalance = async (walletId: string, chainId: string) => {
     const key = `${walletId}:${chainId}`;
@@ -630,6 +775,9 @@ export default function WalletPage() {
         {isTenantAdmin && !viewedUser && (
           <TenantUserSearch onSelect={(id, name, email) => setViewedUser({ id, name, email })} />
         )}
+
+        {/* ── Admin: pending wallets panel ── */}
+        {isTenantAdmin && !viewedUser && <PendingWalletsPanel />}
 
         {/* ── User header ── */}
         {displayUser && !loading && (
