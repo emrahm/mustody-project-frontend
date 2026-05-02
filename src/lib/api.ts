@@ -281,7 +281,38 @@ export interface WalletUser {
   avatar_url?: string;
 }
 
+export interface PortfolioCoin {
+  coin_id: string;
+  symbol: string;
+  display_name: string;
+  manage_type: string;
+  contract_address?: string;
+  decimals: number;
+  balance: string;
+  balance_usd: string;
+}
+
+export interface PortfolioWallet {
+  id: string;
+  public_address: string;
+  status: 'pending' | 'active' | 'failed';
+}
+
+export interface PortfolioChain {
+  chain_id: string;
+  display_name: string;
+  mpc_chain_type: 'EVM' | 'COSMOS' | 'SOLANA';
+  native_symbol: string;
+  explorer_url?: string;
+  wallet: PortfolioWallet | null;
+  coins: PortfolioCoin[];
+}
+
 export const walletAPI = {
+  // Get portfolio: all chains with wallet status and coin balances
+  getPortfolio: () =>
+    api.get<{ chains: PortfolioChain[] }>('/wallet/portfolio'),
+
   // Get wallets for the current user (or a specific user if tenant admin)
   getWallets: (userId?: string) =>
     api.get<{ wallets: UserWallet[] }>('/wallet', { params: userId ? { user_id: userId } : undefined }),
