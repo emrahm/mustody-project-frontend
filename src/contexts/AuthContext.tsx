@@ -133,7 +133,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         { id: '4', label: 'Company Management', path: '/company', icon: 'Business', roles: ['admin', 'owner'], order: 4 },
         { id: '5', label: 'Tenant Request Management', path: '/admin/tenant-requests', icon: 'Business', roles: ['admin', 'owner'], order: 5 },
         { id: '6', label: 'Audit Logs', path: '/audit-logs', icon: 'Security', roles: ['admin', 'owner'], order: 6 },
-        { id: '7', label: 'KYC Management', path: '/admin/kyc', icon: 'Security', roles: ['admin', 'owner'], order: 7 },
+        { id: '7', label: 'Email Queue', path: '/admin/email-queue', icon: 'Email', roles: ['admin', 'owner'], order: 7 },
+        { id: '8', label: 'KYC Management', path: '/admin/kyc', icon: 'Security', roles: ['admin', 'owner'], order: 8 },
       );
     }
     

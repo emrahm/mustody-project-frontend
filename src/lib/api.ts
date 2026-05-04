@@ -343,4 +343,36 @@ export const adminWalletAPI = {
     api.post<{ message: string; wallet: UserWallet }>(`/admin/wallets/${walletId}/retry`),
 };
 
+export interface EmailQueueItem {
+  id: string;
+  correlation_id?: string;
+  tenant_id?: string;
+  user_id?: string;
+  to_email: string;
+  from_email: string;
+  from_name?: string;
+  subject: string;
+  body: string;
+  is_sent: boolean;
+  sent_at?: string;
+  error_message?: string;
+  retry_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export const adminEmailQueueAPI = {
+  list: (page = 1, limit = 25, isSent?: boolean, search?: string) => {
+    const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+    if (isSent !== undefined) params.set('is_sent', String(isSent));
+    if (search) params.set('search', search);
+    return api.get<{ data: EmailQueueItem[]; total: number; page: number; limit: number }>(
+      `/admin/email-queue?${params}`
+    );
+  },
+  getById: (id: string) => api.get<EmailQueueItem>(`/admin/email-queue/${id}`),
+  retry: (id: string) => api.post(`/admin/email-queue/${id}/retry`),
+  delete: (id: string) => api.delete(`/admin/email-queue/${id}`),
+};
+
 export default api;

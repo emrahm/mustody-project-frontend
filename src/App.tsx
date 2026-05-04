@@ -46,6 +46,7 @@ import CssBaseline from '@mui/material/CssBaseline';
 import { theme } from './theme/theme';
 import ApiKeysManagement from "./pages/ApiKeysManagementMUI";
 import WalletPage from "./pages/WalletPage";
+import EmailQueueMUI from "./pages/EmailQueueMUI";
 
 function Router() {
   return (
@@ -82,6 +83,7 @@ function Router() {
       <Route path="/invitation/:token" component={InvitationRegister} />
       <Route path="/audit-logs" component={() => <ProtectedRoute><AuditLogsMUI /></ProtectedRoute>} />
       <Route path="/wallet" component={() => <ProtectedRoute><WalletPage /></ProtectedRoute>} />
+      <Route path="/admin/email-queue" component={() => <ProtectedRoute><EmailQueueMUI /></ProtectedRoute>} />
       <Route path="/audit-logs-old" component={AuditLogs} />
       <Route component={NotFound} />
     </Switch>
