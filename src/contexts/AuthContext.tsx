@@ -135,6 +135,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         { id: '6', label: 'Audit Logs', path: '/audit-logs', icon: 'Security', roles: ['admin', 'owner'], order: 6 },
         { id: '7', label: 'Email Queue', path: '/admin/email-queue', icon: 'Email', roles: ['admin', 'owner'], order: 7 },
         { id: '8', label: 'KYC Management', path: '/admin/kyc', icon: 'Security', roles: ['admin', 'owner'], order: 8 },
+        { id: '9', label: 'MPC Clusters', path: '/admin/mpc-clusters', icon: 'Hub', roles: ['admin', 'owner'], order: 9 },
       );
     }
     
@@ -148,6 +149,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         menuItems.push(
             { id: '12', label: 'Team Management', path: '/team', icon: 'People', roles: ['tenant_admin'], order: 12 },
             { id: '13', label: 'API Keys', path: '/api-keys', icon: 'Key', roles: ['tenant_admin'], order: 8 },
+            { id: '14', label: 'MPC Clusters', path: '/tenant/mpc-clusters', icon: 'Hub', roles: ['tenant_admin'], order: 13 },
         );
       }
     }

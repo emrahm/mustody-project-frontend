@@ -40,6 +40,7 @@ import {
   Message,
   CloudSync,
   AccountBalanceWallet,
+  Hub,
 } from '@mui/icons-material';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/contexts/AuthContext';
@@ -68,6 +69,7 @@ const iconMap: { [key: string]: React.ReactElement } = {
   'Settings': <Settings />,
   'Support': <Support />,
   'AccountBalanceWallet': <AccountBalanceWallet />,
+  'Hub': <Hub />,
 };
 
 const menuCategories = {
