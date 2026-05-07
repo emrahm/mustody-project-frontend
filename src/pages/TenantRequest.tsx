@@ -23,6 +23,7 @@ export default function TenantRequest() {
   const [userProfile, setUserProfile] = useState(null);
   const [canSubmit, setCanSubmit] = useState(false);
   const [existingRequest, setExistingRequest] = useState(null);
+  const [checkData, setCheckData] = useState<any>(null);
   const [fieldErrors, setFieldErrors] = useState({});
 
   useEffect(() => {
@@ -48,10 +49,25 @@ export default function TenantRequest() {
     try {
       const response = await api.get('/tenant-request/check');
       if (response.data.exists) {
+        setCheckData(response.data);
         setExistingRequest(response.data.request);
       }
     } catch (error) {
       // No existing request or error - continue normally
+    }
+  };
+
+  const handleResend = async () => {
+    setLoading(true);
+    setError('');
+    setSuccess(false);
+    try {
+      await api.post('/tenant-request/resend');
+      setSuccess(true);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to resend invitation');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -149,14 +165,15 @@ export default function TenantRequest() {
   };
 
   if (existingRequest) {
+    const isApprovedPendingInvitation =
+      existingRequest.status === 'approved' && checkData?.invitation_pending;
+
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <CardTitle className="text-blue-600">Request Already Submitted</CardTitle>
-            <CardDescription>
-              You have already submitted a tenant request
-            </CardDescription>
+            <CardDescription>You have already submitted a tenant request</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3 mb-4">
@@ -179,9 +196,34 @@ export default function TenantRequest() {
                 <span>{new Date(existingRequest.created_at).toLocaleDateString()}</span>
               </div>
             </div>
-            <Link href="/login">
-              <Button className="w-full">Back to Login</Button>
-            </Link>
+
+            {isApprovedPendingInvitation && (
+              <Alert className="mb-4">
+                <AlertDescription>
+                  Your request was approved! An invitation email was sent to <strong>{existingRequest.email}</strong>.
+                  If you didn't receive it, click below to resend.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {error && <div className="text-red-600 text-sm mb-3">{error}</div>}
+            {success && <div className="text-green-600 text-sm mb-3">Invitation email resent successfully!</div>}
+
+            <div className="space-y-2">
+              {isApprovedPendingInvitation && (
+                <Button
+                  className="w-full"
+                  variant="outline"
+                  disabled={loading}
+                  onClick={handleResend}
+                >
+                  {loading ? 'Sending...' : 'Resend Invitation Email'}
+                </Button>
+              )}
+              <Link href="/dashboard">
+                <Button className="w-full">Go to Dashboard</Button>
+              </Link>
+            </div>
           </CardContent>
         </Card>
       </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Card,
@@ -24,9 +24,10 @@ import {
   InputLabel,
   Grid,
   IconButton,
-  Alert,
   Avatar,
-  Divider,
+  Tabs,
+  Tab,
+  InputAdornment,
 } from '@mui/material';
 import {
   Visibility,
@@ -39,24 +40,47 @@ import {
   Image,
   PictureAsPdf,
   InsertDriveFile,
+  Search,
 } from '@mui/icons-material';
 import DashboardLayout from '@/components/DashboardLayout';
 import { api } from '@/lib/api';
 
+interface KYCRequest {
+  id: string;
+  user_id: string;
+  status: string;
+  created_at: string;
+  data?: { documents?: Record<string, unknown> };
+  user?: { name?: string; email?: string; avatar_url?: string };
+}
+
 export default function KYCManagement() {
-  const [requests, setRequests] = useState([]);
+  const [requests, setRequests] = useState<KYCRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedRequest, setSelectedRequest] = useState(null);
-  const [documents, setDocuments] = useState([]);
+  const [selectedRequest, setSelectedRequest] = useState<KYCRequest | null>(null);
+  const [documents, setDocuments] = useState<string[]>([]);
   const [reviewDialog, setReviewDialog] = useState(false);
-  const [reviewData, setReviewData] = useState({
-    status: '',
-    notes: ''
-  });
+  const [reviewData, setReviewData] = useState({ status: '', notes: '' });
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusTab, setStatusTab] = useState('pending');
 
   useEffect(() => {
     fetchKYCRequests();
   }, []);
+
+  const filteredRequests = useMemo(() => {
+    return requests.filter((r) => {
+      const matchesStatus =
+        statusTab === 'under_review'
+          ? r.status === 'under_review' || r.status === 'in_progress'
+          : r.status === statusTab;
+      const q = searchQuery.toLowerCase();
+      const matchesSearch = !q ||
+        r.user?.name?.toLowerCase().includes(q) ||
+        r.user?.email?.toLowerCase().includes(q);
+      return matchesStatus && matchesSearch;
+    });
+  }, [requests, statusTab, searchQuery]);
 
   const fetchKYCRequests = async () => {
     try {
@@ -71,7 +95,7 @@ export default function KYCManagement() {
     }
   };
 
-  const fetchUserDocuments = async (userId) => {
+  const fetchUserDocuments = async (userId: string) => {
     try {
       // Documents are already in the request data, no need for separate API call
       const request = requests.find(r => r.user_id === userId);
@@ -87,13 +111,13 @@ export default function KYCManagement() {
     }
   };
 
-  const handleViewRequest = async (request) => {
+  const handleViewRequest = async (request: KYCRequest) => {
     setSelectedRequest(request);
     await fetchUserDocuments(request.user_id);
     setReviewDialog(true);
   };
 
-  const handleDownloadDocument = async (userId, filename) => {
+  const handleDownloadDocument = async (userId: string, filename: string) => {
     try {
       const response = await api.get(`/kyc/admin/document/${userId}/${filename}`, {
         responseType: 'blob'
@@ -129,7 +153,7 @@ export default function KYCManagement() {
     }
   };
 
-  const getStatusColor = (status) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
       case 'verified': return 'success';
       case 'rejected': return 'error';
@@ -139,7 +163,7 @@ export default function KYCManagement() {
     }
   };
 
-  const getStatusIcon = (status) => {
+  const getStatusIcon = (status: string) => {
     switch (status) {
       case 'verified': return <CheckCircle />;
       case 'rejected': return <Cancel />;
@@ -149,7 +173,7 @@ export default function KYCManagement() {
     }
   };
 
-  const getFileIcon = (filename) => {
+  const getFileIcon = (filename: string) => {
     const ext = filename.toLowerCase().split('.').pop();
     switch (ext) {
       case 'pdf': return <PictureAsPdf sx={{ color: 'error.main' }} />;
@@ -180,10 +204,7 @@ export default function KYCManagement() {
             startIcon={<Refresh />}
             onClick={fetchKYCRequests}
             disabled={loading}
-            sx={{ 
-              borderRadius: 2,
-              textTransform: 'none'
-            }}
+            sx={{ borderRadius: 2, textTransform: 'none' }}
           >
             Refresh
           </Button>
@@ -191,6 +212,37 @@ export default function KYCManagement() {
 
         <Card sx={{ borderRadius: 2, boxShadow: 2 }}>
           <CardContent>
+            <Box sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'center' }}>
+              <TextField
+                size="small"
+                placeholder="Search by name or email..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                sx={{ width: 300 }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Search fontSize="small" />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+              <Typography variant="body2" color="text.secondary" sx={{ ml: 'auto' }}>
+                {filteredRequests.length} records
+              </Typography>
+            </Box>
+
+            <Tabs
+              value={statusTab}
+              onChange={(_, v) => setStatusTab(v)}
+              sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}
+            >
+              <Tab label={`Pending (${requests.filter((r) => r.status === 'pending').length})`} value="pending" />
+              <Tab label={`Under Review (${requests.filter((r) => r.status === 'under_review' || r.status === 'in_progress').length})`} value="under_review" />
+              <Tab label={`Verified (${requests.filter((r) => r.status === 'verified').length})`} value="verified" />
+              <Tab label={`Rejected (${requests.filter((r) => r.status === 'rejected').length})`} value="rejected" />
+            </Tabs>
+
             <TableContainer component={Paper}>
               <Table>
                 <TableHead>
@@ -204,7 +256,7 @@ export default function KYCManagement() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {requests.map((request) => (
+                  {filteredRequests.map((request) => (
                     <TableRow 
                       key={request.id}
                       sx={{ '&:hover': { bgcolor: 'grey.50' } }}
@@ -247,10 +299,10 @@ export default function KYCManagement() {
               </Table>
             </TableContainer>
 
-            {requests.length === 0 && !loading && (
+            {filteredRequests.length === 0 && !loading && (
               <Box sx={{ textAlign: 'center', py: 4 }}>
                 <Typography color="text.secondary">
-                  No KYC requests found
+                  {searchQuery || statusTab !== 'all' ? 'No matching KYC requests' : 'No KYC requests found'}
                 </Typography>
               </Box>
             )}
@@ -321,12 +373,12 @@ export default function KYCManagement() {
                     <Typography><strong>Status:</strong></Typography>
                     <Chip 
                       label={selectedRequest?.status} 
-                      color={getStatusColor(selectedRequest?.status)}
+                      color={getStatusColor(selectedRequest?.status ?? '')}
                       size="small"
-                      icon={getStatusIcon(selectedRequest?.status)}
+                      icon={getStatusIcon(selectedRequest?.status ?? '')}
                     />
                   </Box>
-                  <Typography><strong>Submitted:</strong> {new Date(selectedRequest?.created_at).toLocaleDateString()}</Typography>
+                  <Typography><strong>Submitted:</strong> {selectedRequest?.created_at ? new Date(selectedRequest.created_at).toLocaleDateString() : 'N/A'}</Typography>
                 </Box>
               </Grid>
 
@@ -367,7 +419,7 @@ export default function KYCManagement() {
                         <IconButton
                           size="small"
                           color="primary"
-                          onClick={() => handleDownloadDocument(selectedRequest.user_id, doc)}
+                          onClick={() => handleDownloadDocument(selectedRequest!.user_id, doc)}
                           sx={{ ml: 1 }}
                         >
                           <Download fontSize="small" />

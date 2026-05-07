@@ -44,22 +44,25 @@ export default function InvitationRegister() {
     e.preventDefault();
     setLoading(true);
     setError('');
-    
+
     try {
-      if (formData.password !== formData.confirmPassword) {
-        setError('Passwords do not match');
-        return;
+      if (invitation?.role === 'tenant_admin') {
+        // Existing user — just confirm with token
+        await api.post('/invitation/confirm', { token: params?.token });
+        setLocation('/dashboard?message=Tenant setup completed! You are now a Tenant Admin.');
+      } else {
+        if (formData.password !== formData.confirmPassword) {
+          setError('Passwords do not match');
+          return;
+        }
+        const name = `${formData.firstName} ${formData.lastName}`.trim();
+        await api.post('/invitation/accept', {
+          token: params?.token,
+          name,
+          password: formData.password
+        });
+        setLocation('/login?message=Account created successfully! You can now login.');
       }
-      
-      const name = `${formData.firstName} ${formData.lastName}`.trim();
-      
-      await api.post('/invitation/accept', {
-        token: params?.token,
-        name,
-        password: formData.password
-      });
-      
-      setLocation('/login?message=Account created successfully! You can now login.');
     } catch (error: any) {
       setError(error.response?.data?.message || 'An error occurred');
     } finally {
@@ -123,14 +126,29 @@ export default function InvitationRegister() {
             <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
               <div className="flex items-center gap-2 text-sm text-blue-800">
                 <Building className="h-4 w-4" />
-                <span>Organization: {invitation?.tenant_name}</span>
+                <span>Organization: {invitation?.tenant_name || invitation?.company || 'Your Organization'}</span>
               </div>
               <div className="text-sm text-blue-600 mt-1">
                 Email: {invitation?.email}
               </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            {invitation?.role === 'tenant_admin' ? (
+              // Existing user — no name/password needed
+              <form onSubmit={handleSubmit}>
+                <p className="text-sm text-gray-600 mb-4">
+                  Your account is ready. Click below to complete your tenant setup and become a Tenant Admin.
+                </p>
+                <Button
+                  type="submit"
+                  className="w-full bg-blue-600 hover:bg-blue-700"
+                  disabled={loading}
+                >
+                  {loading ? 'Setting up...' : 'Complete Tenant Setup'}
+                </Button>
+              </form>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="firstName">First Name</Label>
@@ -215,6 +233,7 @@ export default function InvitationRegister() {
                 {loading ? 'Creating Account...' : 'Complete Account'}
               </Button>
             </form>
+            )}
           </CardContent>
         </Card>
       </div>

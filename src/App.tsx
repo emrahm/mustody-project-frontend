@@ -57,7 +57,7 @@ function Router() {
       <Route path="/register" component={RegisterMUI} />
       <Route path="/dashboard" component={() => <ProtectedRoute><DashboardMUI /></ProtectedRoute>} />
       <Route path="/verify-email" component={VerifyEmail} />
-      <Route path="/api-keys" component={() => <ProtectedRoute><ApiKeysPage /></ProtectedRoute>} />
+      <Route path="/api-keys" component={() => <ProtectedRoute><ApiKeysManagement /></ProtectedRoute>} />
       <Route path="/api-docs" component={() => <ProtectedRoute><ApiDocumentationPage /></ProtectedRoute>} />
       <Route path="/admin/login" component={AdminLogin} />
       <Route path="/admin/dashboard" component={AdminDashboard} />

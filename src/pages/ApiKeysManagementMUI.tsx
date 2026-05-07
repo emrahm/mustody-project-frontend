@@ -53,6 +53,7 @@ import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
 import DashboardLayout from '@/components/DashboardLayout';
 import { apiKeyAPI } from '@/lib/api';
+import CodeSnippetDialog from '@/components/CodeSnippetDialog';
 
 const schema = yup.object({
   name: yup.string().required('API key name is required'),
@@ -118,6 +119,7 @@ export default function ApiKeysManagement() {
     type: 'delete' | 'disable';
     apiKey: ApiKey | null;
   }>({ open: false, type: 'delete', apiKey: null });
+  const [codeSnippetKey, setCodeSnippetKey] = useState<ApiKey | null>(null);
 
   const {
     control,
@@ -165,10 +167,10 @@ export default function ApiKeysManagement() {
         data.authType === 'rsa' ? data.publicKey : undefined
       );
       
-      setGeneratedKey({
-        keyId: response.data.keyId,
-        secret: data.authType === 'hmac' ? response.data.secret : undefined,
-      });
+      const createdKeyId = response.data.keyId;
+      const createdSecret = data.authType === 'hmac' ? response.data.secret : undefined;
+
+      setGeneratedKey({ keyId: createdKeyId, secret: createdSecret });
       
       await loadApiKeys();
       reset();
@@ -388,24 +390,35 @@ export default function ApiKeysManagement() {
                       <TableCell>{apiKey.lastUsedAt ? new Date(apiKey.lastUsedAt).toLocaleDateString() : 'Never'}</TableCell>
                       <TableCell>{apiKey.expiresAt ? new Date(apiKey.expiresAt).toLocaleDateString() : 'Never'}</TableCell>
                       <TableCell align="right">
-                        <Tooltip title={apiKey.isActive ? 'Disable' : 'Enable'}>
-                          <IconButton 
-                            size="small" 
-                            onClick={() => handleToggleActive(apiKey)}
-                            color={apiKey.isActive ? 'warning' : 'success'}
+                        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            color="info"
+                            startIcon={<Code fontSize="small" />}
+                            onClick={() => setCodeSnippetKey(apiKey)}
                           >
-                            <PowerSettingsNew fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Delete">
-                          <IconButton 
-                            size="small" 
+                            Code
+                          </Button>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            color={apiKey.isActive ? 'warning' : 'success'}
+                            startIcon={<PowerSettingsNew fontSize="small" />}
+                            onClick={() => handleToggleActive(apiKey)}
+                          >
+                            {apiKey.isActive ? 'Disable' : 'Enable'}
+                          </Button>
+                          <Button
+                            size="small"
+                            variant="outlined"
                             color="error"
+                            startIcon={<Delete fontSize="small" />}
                             onClick={() => handleDelete(apiKey)}
                           >
-                            <Delete fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
+                            Delete
+                          </Button>
+                        </Box>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -848,6 +861,13 @@ client.DefaultRequestHeaders.Authorization =
             </Button>
           </DialogActions>
         </Dialog>
+
+        {/* Code Snippet Dialog */}
+        <CodeSnippetDialog
+          open={!!codeSnippetKey}
+          onClose={() => setCodeSnippetKey(null)}
+          apiKey={codeSnippetKey}
+        />
       </Box>
     </DashboardLayout>
   );
