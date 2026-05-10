@@ -1,42 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  Button,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Chip,
-  IconButton,
-  Tooltip,
-  CircularProgress,
-  Alert,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Switch,
-  FormControlLabel,
+  Box, Card, CardContent, Typography, Button, Table, TableBody,
+  TableCell, TableContainer, TableHead, TableRow, Paper, Chip,
+  IconButton, Tooltip, CircularProgress, Alert, Dialog, DialogTitle,
+  DialogContent, DialogActions, TextField, Switch, FormControlLabel,
 } from '@mui/material';
-import {
-  Add,
-  Edit,
-  Delete,
-  PauseCircle,
-  Refresh,
-  Hub,
-} from '@mui/icons-material';
+import { Edit, PauseCircle, Refresh, Hub, UploadFile, VpnKey } from '@mui/icons-material';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
@@ -49,162 +18,217 @@ interface MPCCluster {
   name: string;
   grpc_addr: string;
   node_id: string;
-  secret_provider: 'env' | 'vault' | 'docker_secret';
-  secret_ref: string;
+  secret_provider: string;
+  secret_ref: string; // always "**" from backend
   tls_cert_file: string | null;
   tls_key_file: string | null;
   is_active: boolean;
   expires_at: string | null;
   created_at: string;
-  created_by: string | null;
 }
-
-const emptyForm = (): Partial<MPCCluster> => ({
-  name: '',
-  grpc_addr: '',
-  node_id: '',
-  secret_provider: 'env',
-  secret_ref: '',
-  tls_cert_file: null,
-  tls_key_file: null,
-  is_active: true,
-  expires_at: null,
-  tenant_id: null,
-});
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function MpcClustersPage() {
   const { hasGlobalRole, user } = useAuth();
   const isAdmin = hasGlobalRole('admin') || hasGlobalRole('owner');
-  const isTenantAdmin = !isAdmin && (user?.roles?.some((r: any) => r.role === 'tenant_admin') ?? false);
+  const isTenantAdmin = !isAdmin && (user?.members?.some((m) => m.role === 'tenant_admin') ?? false);
 
-  const apiBase = isAdmin ? '/admin/mpc-clusters' : '/tenant/mpc-clusters';
+  const adminBase = '/admin/mpc-clusters';
+  const tenantBase = '/tenant/mpc-clusters';
 
   const [clusters, setClusters] = useState<MPCCluster[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  // Dialog state
-  const [formOpen, setFormOpen] = useState(false);
+  // Edit dialog (admin only)
+  const [editOpen, setEditOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<MPCCluster | null>(null);
-  const [form, setForm] = useState<Partial<MPCCluster>>(emptyForm());
-  const [formError, setFormError] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ name: '', grpc_addr: '', node_id: '', is_active: true, secret: '' });
+  const [editError, setEditError] = useState<string | null>(null);
 
-  // Confirm dialog
-  const [confirmDialog, setConfirmDialog] = useState<{
-    open: boolean;
-    title: string;
-    message: string;
-    action: () => void;
-  }>({ open: false, title: '', message: '', action: () => {} });
+  // TLS upload dialog (admin + tenant_admin)
+  const [tlsOpen, setTlsOpen] = useState(false);
+  const [tlsTarget, setTlsTarget] = useState<MPCCluster | null>(null);
+  const [tlsCert, setTlsCert] = useState<File | null>(null);
+  const [tlsKey, setTlsKey] = useState<File | null>(null);
+  const [tlsError, setTlsError] = useState<string | null>(null);
+  const certRef = useRef<HTMLInputElement>(null);
+  const keyRef = useRef<HTMLInputElement>(null);
 
-  // ── Data fetching ────────────────────────────────────────────────────────────
+  // Secret rotation dialog (tenant_admin + admin via edit)
+  const [secretOpen, setSecretOpen] = useState(false);
+  const [secretTarget, setSecretTarget] = useState<MPCCluster | null>(null);
+  const [secretValue, setSecretValue] = useState('');
+  const [secretError, setSecretError] = useState<string | null>(null);
+
+  // Confirm deactivate
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmTarget, setConfirmTarget] = useState<MPCCluster | null>(null);
+
+  // Create cluster (tenant_admin)
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createForm, setCreateForm] = useState({ name: '', grpc_addr: '', node_id: '', secret_ref: '' });
+  const [createError, setCreateError] = useState<string | null>(null);
+
+  // ── Fetch ────────────────────────────────────────────────────────────────────
 
   const fetchClusters = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await api.get<{ clusters: MPCCluster[] }>(apiBase);
+      const base = isAdmin ? adminBase : tenantBase;
+      const res = await api.get<{ clusters: MPCCluster[] }>(base);
       setClusters(res.data.clusters ?? []);
     } catch (e: any) {
       setError(e.response?.data?.error ?? 'Failed to load clusters');
     } finally {
       setLoading(false);
     }
-  }, [apiBase]);
+  }, [isAdmin]);
 
   useEffect(() => { fetchClusters(); }, [fetchClusters]);
 
-  // ── Form helpers ─────────────────────────────────────────────────────────────
+  // ── Expiry helpers ───────────────────────────────────────────────────────────
 
-  const openCreate = () => {
-    setEditTarget(null);
-    setForm(emptyForm());
-    setFormError(null);
-    setFormOpen(true);
+  const daysUntil = (dateStr: string | null) => {
+    if (!dateStr) return null;
+    return Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86400000);
   };
 
-  const openEdit = (cluster: MPCCluster) => {
-    setEditTarget(cluster);
-    setForm({ ...cluster });
-    setFormError(null);
-    setFormOpen(true);
+  const expiryChip = (cluster: MPCCluster) => {
+    const days = daysUntil(cluster.expires_at);
+    if (days === null) return <Typography variant="caption" color="text.secondary">—</Typography>;
+    if (days <= 0) return <Chip label="Expired" color="error" size="small" />;
+    if (days <= 14) return <Chip label={`${days}d left`} color="warning" size="small" />;
+    return <Typography variant="caption">{new Date(cluster.expires_at!).toLocaleDateString()}</Typography>;
   };
 
-  const handleFormChange = (field: keyof MPCCluster, value: any) => {
-    setForm(prev => ({ ...prev, [field]: value }));
+  // ── Edit (admin) ─────────────────────────────────────────────────────────────
+
+  const openEdit = (c: MPCCluster) => {
+    setEditTarget(c);
+    setEditForm({ name: c.name, grpc_addr: c.grpc_addr, node_id: c.node_id, is_active: c.is_active, secret: '' });
+    setEditError(null);
+    setEditOpen(true);
   };
 
-  const handleFormSubmit = async () => {
-    setFormError(null);
+  const submitEdit = async () => {
+    if (!editTarget) return;
+    setEditError(null);
     try {
-      if (editTarget) {
-        await api.put(`${apiBase}/${editTarget.id}`, form);
-      } else {
-        await api.post(apiBase, form);
-      }
-      setFormOpen(false);
+      const body: any = {
+        name: editForm.name,
+        grpc_addr: editForm.grpc_addr,
+        node_id: editForm.node_id,
+        is_active: editForm.is_active,
+      };
+      if (editForm.secret) body.secret = editForm.secret;
+      await api.put(`${adminBase}/${editTarget.id}`, body);
+      setEditOpen(false);
       fetchClusters();
     } catch (e: any) {
-      setFormError(e.response?.data?.error ?? 'Save failed');
+      setEditError(e.response?.data?.error ?? 'Save failed');
     }
   };
 
-  // ── Actions ──────────────────────────────────────────────────────────────────
+  // ── TLS Upload (admin + tenant_admin) ────────────────────────────────────────
 
-  const confirmDeactivate = (cluster: MPCCluster) => {
-    setConfirmDialog({
-      open: true,
-      title: 'Deactivate Cluster',
-      message: `Deactivating "${cluster.name}" will mark it inactive and fail all pending MPC wallet requests for this tenant. To resume MPC operations, re-activate this cluster or create a new one with the same data source.\n\nContinue?`,
-      action: async () => {
-        setConfirmDialog(d => ({ ...d, open: false }));
-        setActionLoading(cluster.id + '_deactivate');
-        try {
-          await api.post(`${apiBase}/${cluster.id}/deactivate`);
-          fetchClusters();
-        } catch (e: any) {
-          setError(e.response?.data?.error ?? 'Deactivate failed');
-        } finally {
-          setActionLoading(null);
-        }
-      },
-    });
+  const openTLS = (c: MPCCluster) => {
+    setTlsTarget(c);
+    setTlsCert(null);
+    setTlsKey(null);
+    setTlsError(null);
+    setTlsOpen(true);
   };
 
-  const confirmDelete = (cluster: MPCCluster) => {
-    setConfirmDialog({
-      open: true,
-      title: 'Delete Cluster',
-      message: `Permanently deleting "${cluster.name}" will remove the cluster definition and fail all pending MPC wallet requests for this tenant. This cannot be undone.\n\nTo resume MPC operations you must create a new cluster with the same data source.\n\nContinue?`,
-      action: async () => {
-        setConfirmDialog(d => ({ ...d, open: false }));
-        setActionLoading(cluster.id + '_delete');
-        try {
-          await api.delete(`${apiBase}/${cluster.id}`);
-          fetchClusters();
-        } catch (e: any) {
-          setError(e.response?.data?.error ?? 'Delete failed');
-        } finally {
-          setActionLoading(null);
-        }
-      },
-    });
+  const submitTLS = async () => {
+    if (!tlsTarget || !tlsCert || !tlsKey) return;
+    setTlsError(null);
+    setActionLoading(tlsTarget.id + '_tls');
+    try {
+      const fd = new FormData();
+      fd.append('cert', tlsCert);
+      fd.append('key', tlsKey);
+      const base = isAdmin ? adminBase : tenantBase;
+      await api.post(`${base}/${tlsTarget.id}/upload-tls`, fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setTlsOpen(false);
+      fetchClusters();
+    } catch (e: any) {
+      setTlsError(e.response?.data?.error ?? 'Upload failed');
+    } finally {
+      setActionLoading(null);
+    }
   };
 
-  // ── Render ───────────────────────────────────────────────────────────────────
+  // ── Secret Rotation (tenant_admin) ───────────────────────────────────────────
+
+  const openSecret = (c: MPCCluster) => {
+    setSecretTarget(c);
+    setSecretValue('');
+    setSecretError(null);
+    setSecretOpen(true);
+  };
+
+  const submitSecret = async () => {
+    if (!secretTarget || !secretValue) return;
+    setSecretError(null);
+    setActionLoading(secretTarget.id + '_secret');
+    try {
+      await api.post(`${tenantBase}/${secretTarget.id}/rotate-secret`, { secret: secretValue });
+      setSecretOpen(false);
+      fetchClusters();
+    } catch (e: any) {
+      setSecretError(e.response?.data?.error ?? 'Rotation failed');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // ── Deactivate (admin) ───────────────────────────────────────────────────────
+
+  const submitDeactivate = async () => {
+    if (!confirmTarget) return;
+    setConfirmOpen(false);
+    setActionLoading(confirmTarget.id + '_deactivate');
+    try {
+      await api.post(`${adminBase}/${confirmTarget.id}/deactivate`);
+      fetchClusters();
+    } catch (e: any) {
+      setError(e.response?.data?.error ?? 'Deactivate failed');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // ── Create (tenant_admin) ────────────────────────────────────────────────────
+
+  const submitCreate = async () => {
+    setCreateError(null);
+    try {
+      await api.post(tenantBase, createForm);
+      setCreateOpen(false);
+      setCreateForm({ name: '', grpc_addr: '', node_id: '', secret_ref: '' });
+      fetchClusters();
+    } catch (e: any) {
+      setCreateError(e.response?.data?.error ?? 'Create failed');
+    }
+  };
+
+  // ── Guard ────────────────────────────────────────────────────────────────────
 
   if (!isAdmin && !isTenantAdmin) {
     return (
       <DashboardLayout>
-        <Box sx={{ p: 3 }}>
-          <Alert severity="error">Access denied.</Alert>
-        </Box>
+        <Box sx={{ p: 3 }}><Alert severity="error">Access denied.</Alert></Box>
       </DashboardLayout>
     );
   }
+
+  // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
     <DashboardLayout>
@@ -216,40 +240,41 @@ export default function MpcClustersPage() {
             <Typography variant="h5" fontWeight={600}>MPC Clusters</Typography>
           </Box>
           <Box sx={{ display: 'flex', gap: 1 }}>
+            {isTenantAdmin && (
+              <Button variant="contained" size="small" onClick={() => { setCreateError(null); setCreateOpen(true); }}>
+                Add Cluster
+              </Button>
+            )}
             <Tooltip title="Refresh">
-              <IconButton onClick={fetchClusters} disabled={loading}>
-                <Refresh />
-              </IconButton>
+              <IconButton onClick={fetchClusters} disabled={loading}><Refresh /></IconButton>
             </Tooltip>
-            <Button variant="contained" startIcon={<Add />} onClick={openCreate}>
-              New Cluster
-            </Button>
           </Box>
         </Box>
 
         {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
 
-        {/* Info banner for tenant_admin */}
         {isTenantAdmin && (
           <Alert severity="info" sx={{ mb: 2 }}>
-            You are managing MPC clusters for your tenant. Deactivating or deleting a cluster will fail
-            all pending wallet requests. To resume, re-activate the cluster or create a new one with the
-            same data source.
+            You can upload TLS certificates and rotate the secret key for your cluster.
+            Certificate expiry date is read automatically from the uploaded file.
           </Alert>
         )}
 
         <Card>
           <CardContent sx={{ p: 0 }}>
             {loading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-                <CircularProgress />
-              </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>
             ) : clusters.length === 0 ? (
-              <Box sx={{ p: 4, textAlign: 'center' }}>
-                <Hub sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
-                <Typography color="text.secondary">No MPC clusters defined yet.</Typography>
-                <Button variant="outlined" startIcon={<Add />} sx={{ mt: 2 }} onClick={openCreate}>
-                  Create First Cluster
+              <Box sx={{ p: 3 }}>
+                <Alert severity="success" sx={{ mb: 2 }}>
+                  <Typography variant="body2" fontWeight={600}>Shared MPC Cluster Active</Typography>
+                  <Typography variant="body2">
+                    Your tenant is currently using Mustody's shared MPC infrastructure. Wallet creation and signing are fully operational.
+                    You can optionally add a dedicated cluster for full isolation and control.
+                  </Typography>
+                </Alert>
+                <Button variant="outlined" size="small" onClick={() => { setCreateError(null); setCreateOpen(true); }}>
+                  Add Dedicated Cluster
                 </Button>
               </Box>
             ) : (
@@ -261,84 +286,97 @@ export default function MpcClustersPage() {
                       {isAdmin && <TableCell>Tenant</TableCell>}
                       <TableCell>gRPC Address</TableCell>
                       <TableCell>Node ID</TableCell>
-                      <TableCell>Secret Provider</TableCell>
+                      <TableCell>Secret</TableCell>
+                      <TableCell>TLS</TableCell>
                       <TableCell>Status</TableCell>
-                      <TableCell>Expires</TableCell>
+                      <TableCell>Cert Expires</TableCell>
                       <TableCell align="right">Actions</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {clusters.map(cluster => (
-                      <TableRow key={cluster.id} hover>
+                    {clusters.map(c => (
+                      <TableRow key={c.id} hover>
                         <TableCell>
-                          <Typography variant="body2" fontWeight={500}>{cluster.name}</Typography>
+                          <Typography variant="body2" fontWeight={500}>{c.name}</Typography>
                         </TableCell>
                         {isAdmin && (
                           <TableCell>
                             <Typography variant="caption" color="text.secondary">
-                              {cluster.tenant_id ?? <em>shared</em>}
+                              {c.tenant_id ?? <em>shared</em>}
                             </Typography>
                           </TableCell>
                         )}
                         <TableCell>
-                          <Typography variant="caption" fontFamily="monospace">{cluster.grpc_addr}</Typography>
+                          <Typography variant="caption" fontFamily="monospace">{c.grpc_addr}</Typography>
                         </TableCell>
                         <TableCell>
-                          <Typography variant="caption" fontFamily="monospace">{cluster.node_id}</Typography>
+                          <Typography variant="caption" fontFamily="monospace">{c.node_id}</Typography>
                         </TableCell>
                         <TableCell>
-                          <Chip label={cluster.secret_provider} size="small" variant="outlined" />
+                          <Typography variant="caption" fontFamily="monospace" color="text.secondary">
+                            {c.secret_ref || '—'}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          {c.tls_cert_file
+                            ? <Chip label="Uploaded" color="success" size="small" />
+                            : <Chip label="None" size="small" variant="outlined" />}
                         </TableCell>
                         <TableCell>
                           <Chip
-                            label={cluster.is_active ? 'Active' : 'Inactive'}
-                            color={cluster.is_active ? 'success' : 'default'}
+                            label={c.is_active ? 'Active' : 'Inactive'}
+                            color={c.is_active ? 'success' : 'default'}
                             size="small"
                           />
                         </TableCell>
-                        <TableCell>
-                          <Typography variant="caption" color="text.secondary">
-                            {cluster.expires_at
-                              ? new Date(cluster.expires_at).toLocaleDateString()
-                              : '—'}
-                          </Typography>
-                        </TableCell>
+                        <TableCell>{expiryChip(c)}</TableCell>
                         <TableCell align="right">
-                          <Tooltip title="Edit">
-                            <IconButton size="small" onClick={() => openEdit(cluster)}>
-                              <Edit fontSize="small" />
+                          {/* Admin: edit cluster fields */}
+                          {isAdmin && (
+                            <Tooltip title="Edit">
+                              <IconButton size="small" onClick={() => openEdit(c)}><Edit fontSize="small" /></IconButton>
+                            </Tooltip>
+                          )}
+                          {/* Both: upload TLS */}
+                          <Tooltip title="Upload TLS Certificate & Key">
+                            <IconButton size="small" color="primary" onClick={() => openTLS(c)}>
+                              <UploadFile fontSize="small" />
                             </IconButton>
                           </Tooltip>
-                          {cluster.is_active && (
+                          {/* Tenant admin: rotate secret */}
+                          {isTenantAdmin && (
+                            <Tooltip title="Rotate Secret Key">
+                              <span>
+                                <IconButton
+                                  size="small"
+                                  color="secondary"
+                                  disabled={actionLoading === c.id + '_secret'}
+                                  onClick={() => openSecret(c)}
+                                >
+                                  {actionLoading === c.id + '_secret'
+                                    ? <CircularProgress size={16} />
+                                    : <VpnKey fontSize="small" />}
+                                </IconButton>
+                              </span>
+                            </Tooltip>
+                          )}
+                          {/* Admin: deactivate */}
+                          {isAdmin && c.is_active && (
                             <Tooltip title="Deactivate">
                               <span>
                                 <IconButton
                                   size="small"
                                   color="warning"
-                                  disabled={actionLoading === cluster.id + '_deactivate'}
-                                  onClick={() => confirmDeactivate(cluster)}
+                                  disabled={actionLoading === c.id + '_deactivate'}
+                                  onClick={() => { setConfirmTarget(c); setConfirmOpen(true); }}
                                 >
-                                  {actionLoading === cluster.id + '_deactivate'
+                                  {actionLoading === c.id + '_deactivate'
                                     ? <CircularProgress size={16} />
                                     : <PauseCircle fontSize="small" />}
                                 </IconButton>
                               </span>
                             </Tooltip>
                           )}
-                          <Tooltip title="Delete">
-                            <span>
-                              <IconButton
-                                size="small"
-                                color="error"
-                                disabled={actionLoading === cluster.id + '_delete'}
-                                onClick={() => confirmDelete(cluster)}
-                              >
-                                {actionLoading === cluster.id + '_delete'
-                                  ? <CircularProgress size={16} />
-                                  : <Delete fontSize="small" />}
-                              </IconButton>
-                            </span>
-                          </Tooltip>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -349,111 +387,162 @@ export default function MpcClustersPage() {
           </CardContent>
         </Card>
 
-        {/* Create / Edit Dialog */}
-        <Dialog open={formOpen} onClose={() => setFormOpen(false)} maxWidth="sm" fullWidth>
-          <DialogTitle>{editTarget ? 'Edit Cluster' : 'New MPC Cluster'}</DialogTitle>
+        {/* ── Edit Dialog (admin) ── */}
+        <Dialog open={editOpen} onClose={() => setEditOpen(false)} maxWidth="sm" fullWidth>
+          <DialogTitle>Edit Cluster</DialogTitle>
           <DialogContent dividers>
-            {formError && <Alert severity="error" sx={{ mb: 2 }}>{formError}</Alert>}
+            {editError && <Alert severity="error" sx={{ mb: 2 }}>{editError}</Alert>}
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+              <TextField label="Name" value={editForm.name}
+                onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} fullWidth />
+              <TextField label="gRPC Address" value={editForm.grpc_addr}
+                onChange={e => setEditForm(f => ({ ...f, grpc_addr: e.target.value }))} fullWidth />
+              <TextField label="Node ID" value={editForm.node_id}
+                onChange={e => setEditForm(f => ({ ...f, node_id: e.target.value }))} fullWidth />
               <TextField
-                label="Name"
-                value={form.name ?? ''}
-                onChange={e => handleFormChange('name', e.target.value)}
-                required
-                fullWidth
-              />
-              <TextField
-                label="gRPC Address"
-                value={form.grpc_addr ?? ''}
-                onChange={e => handleFormChange('grpc_addr', e.target.value)}
-                placeholder="host:50051"
-                required
-                fullWidth
-              />
-              <TextField
-                label="Node ID"
-                value={form.node_id ?? ''}
-                onChange={e => handleFormChange('node_id', e.target.value)}
-                required
-                fullWidth
-              />
-              <FormControl fullWidth required>
-                <InputLabel>Secret Provider</InputLabel>
-                <Select
-                  value={form.secret_provider ?? 'env'}
-                  label="Secret Provider"
-                  onChange={e => handleFormChange('secret_provider', e.target.value)}
-                >
-                  <MenuItem value="env">Environment Variable</MenuItem>
-                  <MenuItem value="vault">HashiCorp Vault</MenuItem>
-                  <MenuItem value="docker_secret">Docker Secret</MenuItem>
-                </Select>
-              </FormControl>
-              <TextField
-                label="Secret Ref"
-                value={form.secret_ref ?? ''}
-                onChange={e => handleFormChange('secret_ref', e.target.value)}
-                helperText={
-                  form.secret_provider === 'env'
-                    ? 'Env var name, e.g. MPC_CLUSTER_SECRET'
-                    : form.secret_provider === 'vault'
-                    ? 'Vault path, e.g. secret/mpc/cluster-a'
-                    : 'Docker secret file name'
-                }
-                required
-                fullWidth
-              />
-              <TextField
-                label="TLS Cert File (optional)"
-                value={form.tls_cert_file ?? ''}
-                onChange={e => handleFormChange('tls_cert_file', e.target.value || null)}
-                fullWidth
-              />
-              <TextField
-                label="TLS Key File (optional)"
-                value={form.tls_key_file ?? ''}
-                onChange={e => handleFormChange('tls_key_file', e.target.value || null)}
-                fullWidth
-              />
-              <TextField
-                label="Expires At (optional)"
-                type="datetime-local"
-                value={form.expires_at ? form.expires_at.slice(0, 16) : ''}
-                onChange={e => handleFormChange('expires_at', e.target.value ? new Date(e.target.value).toISOString() : null)}
-                InputLabelProps={{ shrink: true }}
+                label="New Secret (leave blank to keep current)"
+                type="password"
+                value={editForm.secret}
+                onChange={e => setEditForm(f => ({ ...f, secret: e.target.value }))}
+                helperText="If provided, saved to HashiCorp Vault under GRPC_CLUSTER_SECRET_<tenantID>"
                 fullWidth
               />
               <FormControlLabel
-                control={
-                  <Switch
-                    checked={form.is_active ?? true}
-                    onChange={e => handleFormChange('is_active', e.target.checked)}
-                  />
-                }
+                control={<Switch checked={editForm.is_active}
+                  onChange={e => setEditForm(f => ({ ...f, is_active: e.target.checked }))} />}
                 label="Active"
               />
             </Box>
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setFormOpen(false)}>Cancel</Button>
-            <Button variant="contained" onClick={handleFormSubmit}>
-              {editTarget ? 'Save Changes' : 'Create'}
+            <Button onClick={() => setEditOpen(false)}>Cancel</Button>
+            <Button variant="contained" onClick={submitEdit}>Save</Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* ── TLS Upload Dialog (admin + tenant_admin) ── */}
+        <Dialog open={tlsOpen} onClose={() => setTlsOpen(false)} maxWidth="xs" fullWidth>
+          <DialogTitle>Upload TLS Certificate & Key</DialogTitle>
+          <DialogContent dividers>
+            {tlsError && <Alert severity="error" sx={{ mb: 2 }}>{tlsError}</Alert>}
+            <Alert severity="info" sx={{ mb: 2 }}>
+              The certificate's expiry date will be read automatically and set as the cluster's expiry.
+            </Alert>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Box>
+                <Typography variant="caption" color="text.secondary">TLS Certificate (.crt / .pem)</Typography>
+                <Box sx={{ mt: 0.5 }}>
+                  <input ref={certRef} type="file" accept=".crt,.pem,.cer"
+                    style={{ display: 'none' }}
+                    onChange={e => setTlsCert(e.target.files?.[0] ?? null)} />
+                  <Button variant="outlined" size="small" onClick={() => certRef.current?.click()}>
+                    {tlsCert ? tlsCert.name : 'Choose cert file'}
+                  </Button>
+                </Box>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">TLS Key (.key / .pem)</Typography>
+                <Box sx={{ mt: 0.5 }}>
+                  <input ref={keyRef} type="file" accept=".key,.pem"
+                    style={{ display: 'none' }}
+                    onChange={e => setTlsKey(e.target.files?.[0] ?? null)} />
+                  <Button variant="outlined" size="small" onClick={() => keyRef.current?.click()}>
+                    {tlsKey ? tlsKey.name : 'Choose key file'}
+                  </Button>
+                </Box>
+              </Box>
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setTlsOpen(false)}>Cancel</Button>
+            <Button
+              variant="contained"
+              disabled={!tlsCert || !tlsKey || actionLoading === tlsTarget?.id + '_tls'}
+              onClick={submitTLS}
+            >
+              {actionLoading === tlsTarget?.id + '_tls' ? <CircularProgress size={20} /> : 'Upload'}
             </Button>
           </DialogActions>
         </Dialog>
 
-        {/* Confirm Dialog */}
-        <Dialog open={confirmDialog.open} onClose={() => setConfirmDialog(d => ({ ...d, open: false }))} maxWidth="xs" fullWidth>
-          <DialogTitle>{confirmDialog.title}</DialogTitle>
+        {/* ── Secret Rotation Dialog (tenant_admin) ── */}
+        <Dialog open={secretOpen} onClose={() => setSecretOpen(false)} maxWidth="xs" fullWidth>
+          <DialogTitle>Rotate Secret Key</DialogTitle>
+          <DialogContent dividers>
+            {secretError && <Alert severity="error" sx={{ mb: 2 }}>{secretError}</Alert>}
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              The new secret will be saved to HashiCorp Vault. The cluster connection will be re-established immediately.
+            </Alert>
+            <TextField
+              label="New Secret"
+              type="password"
+              value={secretValue}
+              onChange={e => setSecretValue(e.target.value)}
+              fullWidth
+              autoFocus
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setSecretOpen(false)}>Cancel</Button>
+            <Button
+              variant="contained"
+              color="warning"
+              disabled={!secretValue || actionLoading === secretTarget?.id + '_secret'}
+              onClick={submitSecret}
+            >
+              {actionLoading === secretTarget?.id + '_secret' ? <CircularProgress size={20} /> : 'Rotate'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* ── Deactivate Confirm (admin) ── */}
+        <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)} maxWidth="xs" fullWidth>
+          <DialogTitle>Deactivate Cluster</DialogTitle>
           <DialogContent>
-            <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
-              {confirmDialog.message}
+            <Typography variant="body2">
+              Deactivating <strong>{confirmTarget?.name}</strong> will mark it inactive and fail all
+              pending MPC wallet requests for this tenant. Continue?
             </Typography>
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setConfirmDialog(d => ({ ...d, open: false }))}>Cancel</Button>
-            <Button variant="contained" color="error" onClick={confirmDialog.action}>
-              Confirm
+            <Button onClick={() => setConfirmOpen(false)}>Cancel</Button>
+            <Button variant="contained" color="error" onClick={submitDeactivate}>Deactivate</Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* ── Create Cluster (tenant_admin) ── */}
+        <Dialog open={createOpen} onClose={() => setCreateOpen(false)} maxWidth="md" fullWidth>
+          <DialogTitle>Add MPC Cluster</DialogTitle>
+          <DialogContent dividers>
+            {createError && <Alert severity="error" sx={{ mb: 2 }}>{createError}</Alert>}
+            <Alert severity="info" sx={{ mb: 2 }}>
+              <Typography variant="body2" fontWeight={600} gutterBottom>Setup Requirements:</Typography>
+              <Typography variant="body2" component="div">
+                1. Install <strong>mustody-project-round</strong> MPC node on your infrastructure<br/>
+                2. Install <strong>HashiCorp Vault</strong> server for secret management<br/>
+                3. Configure the MPC node to allow backend access (gRPC endpoint)<br/>
+                4. Set environment variable <code>GRPC_CLUSTER_SECRET_&lt;tenant_id&gt;</code> with your shared secret<br/>
+                5. Ensure the node is accessible from this backend system
+              </Typography>
+            </Alert>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+              <TextField label="Cluster Name" value={createForm.name} required
+                onChange={e => setCreateForm(f => ({ ...f, name: e.target.value }))} fullWidth />
+              <TextField label="gRPC Address" placeholder="node.example.com:50051" value={createForm.grpc_addr} required
+                onChange={e => setCreateForm(f => ({ ...f, grpc_addr: e.target.value }))} fullWidth />
+              <TextField label="Node ID" placeholder="node-1" value={createForm.node_id} required
+                onChange={e => setCreateForm(f => ({ ...f, node_id: e.target.value }))} fullWidth />
+              <TextField label="Secret Reference" placeholder="GRPC_CLUSTER_SECRET_<tenant_id>" value={createForm.secret_ref}
+                onChange={e => setCreateForm(f => ({ ...f, secret_ref: e.target.value }))}
+                helperText="Environment variable name containing the shared secret (defaults to env provider)"
+                fullWidth />
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setCreateOpen(false)}>Cancel</Button>
+            <Button variant="contained" onClick={submitCreate}
+              disabled={!createForm.name || !createForm.grpc_addr || !createForm.node_id}>
+              Create
             </Button>
           </DialogActions>
         </Dialog>
