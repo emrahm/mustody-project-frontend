@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useLocation } from 'wouter';
+import {
 import {
   Box, Card, CardContent, Typography, Button, Table, TableBody,
   TableCell, TableContainer, TableHead, TableRow, Paper, Chip,
@@ -15,6 +17,7 @@ import SolEditor from '@/components/SolEditor';
 import {
   contractTemplateAPI,
   deployedContractAPI,
+  walletAPI,
   ContractTemplate,
   ContractTemplateParam,
   DeployedContract,
@@ -396,12 +399,35 @@ function CreateContractDialog({ open, template, onClose, onCreated }: CreateCont
   const [rendered, setRendered] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [chains, setChains] = useState<import('@/lib/api').ChainDefinition[]>([]);
+  const [walletMissing, setWalletMissing] = useState(false);
+  const [, setLocation] = useLocation();
+
+  const isWasm = template?.type === 'wasm';
+
+  useEffect(() => {
+    if (!open) return;
+    // Load chains
+    walletAPI.getChains().then((r) => setChains(r.data.chains || [])).catch(() => {});
+    // Load user wallet for owner address
+    walletAPI.getWallets().then((r) => {
+      const wallets = r.data.wallets || [];
+      const targetType = isWasm ? 'COSMOS' : 'EVM';
+      const match = wallets.find((w) => w.mpc_chain_type === targetType && w.status === 'active');
+      if (match) {
+        setOwnerAddress(match.public_address);
+        setWalletMissing(false);
+      } else {
+        setOwnerAddress('');
+        setWalletMissing(true);
+      }
+    }).catch(() => {});
+  }, [open, isWasm]);
 
   useEffect(() => {
     if (open && template) {
       setContractName(template.name);
       setChainId('');
-      setOwnerAddress('');
       const defaults: Record<string, string> = {};
       (template.parameters || []).forEach((p) => { defaults[p.name] = ''; });
       setParamValues(defaults);
@@ -410,6 +436,10 @@ function CreateContractDialog({ open, template, onClose, onCreated }: CreateCont
       setError(null);
     }
   }, [open, template]);
+
+  const filteredChains = chains.filter((c) =>
+    isWasm ? c.mpc_chain_type === 'COSMOS' : c.mpc_chain_type === 'EVM'
+  );
 
   const handleRender = async () => {
     if (!template) return;
@@ -446,37 +476,51 @@ function CreateContractDialog({ open, template, onClose, onCreated }: CreateCont
     }
   };
 
-  const isWasm = template?.type === 'wasm';
-
   return (
     <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
       <DialogTitle>Create Contract from: {template?.name}</DialogTitle>
       <DialogContent dividers>
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+        {walletMissing && (
+          <Alert
+            severity="warning"
+            sx={{ mb: 2 }}
+            action={
+              <Button size="small" color="inherit" onClick={() => { onClose(); setLocation('/wallet'); }}>
+                Go to Wallet
+              </Button>
+            }
+          >
+            No active {isWasm ? 'Cosmos' : 'EVM'} wallet found. Create one first.
+          </Alert>
+        )}
 
-        <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+        <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
           <TextField
             label="Contract Name"
             value={contractName}
             onChange={(e) => setContractName(e.target.value)}
             size="small"
-            sx={{ flex: 1 }}
+            sx={{ flex: 1, minWidth: 160 }}
           />
-          <TextField
-            label="Chain ID"
-            value={chainId}
-            onChange={(e) => setChainId(e.target.value)}
-            size="small"
-            sx={{ flex: 1 }}
-            placeholder="e.g. cosmoshub-4 or 1"
-          />
+          <FormControl size="small" sx={{ flex: 1, minWidth: 160 }}>
+            <InputLabel>Chain</InputLabel>
+            <Select value={chainId} label="Chain" onChange={(e) => setChainId(e.target.value)}>
+              {filteredChains.map((c) => (
+                <MenuItem key={c.chain_id} value={c.chain_id}>
+                  {c.display_name} ({c.chain_id})
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
           <TextField
             label="Owner Address"
             value={ownerAddress}
             onChange={(e) => setOwnerAddress(e.target.value)}
             size="small"
-            sx={{ flex: 2 }}
-            placeholder="0x... or cosmos1..."
+            sx={{ flex: 2, minWidth: 200 }}
+            placeholder={isWasm ? 'cosmos1...' : '0x...'}
+            InputProps={{ readOnly: !walletMissing }}
           />
         </Box>
 
@@ -531,7 +575,7 @@ function CreateContractDialog({ open, template, onClose, onCreated }: CreateCont
         <Button
           variant="contained"
           onClick={handleSave}
-          disabled={saving || !contractName || !chainId || !ownerAddress}
+          disabled={saving || !contractName || !chainId || !ownerAddress || walletMissing}
           startIcon={saving ? <CircularProgress size={16} /> : <RocketLaunch />}
         >
           Save Contract
@@ -817,6 +861,13 @@ export default function ContractTemplatesPage() {
         open={simulateOpen}
         template={simulateTarget}
         onClose={() => setSimulateOpen(false)}
+      />
+
+      <CreateContractDialog
+        open={createContractOpen}
+        template={createContractTemplate}
+        onClose={() => setCreateContractOpen(false)}
+        onCreated={() => {}}
       />
     </DashboardLayout>
   );

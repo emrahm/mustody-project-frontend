@@ -137,6 +137,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         { id: '8', label: 'KYC Management', path: '/admin/kyc', icon: 'Security', roles: ['admin', 'owner'], order: 8 },
         { id: '9', label: 'MPC Clusters', path: '/admin/mpc-clusters', icon: 'Hub', roles: ['admin', 'owner'], order: 9 },
         { id: '10', label: 'Contract Templates', path: '/contract-templates', icon: 'Description', roles: ['admin', 'owner'], order: 10 },
+        { id: '10b', label: 'Deployed Contracts', path: '/deployed-contracts', icon: 'CloudSync', roles: ['admin', 'owner'], order: 11 },
       );
     }
     
@@ -152,6 +153,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             { id: '13', label: 'API Keys', path: '/api-keys', icon: 'Key', roles: ['tenant_admin'], order: 8 },
             { id: '14', label: 'MPC Clusters', path: '/tenant/mpc-clusters', icon: 'Hub', roles: ['tenant_admin'], order: 13 },
             { id: '15', label: 'Contract Templates', path: '/contract-templates', icon: 'Description', roles: ['tenant_admin'], order: 14 },
+            { id: '15b', label: 'Deployed Contracts', path: '/deployed-contracts', icon: 'CloudSync', roles: ['tenant_admin'], order: 15 },
         );
       }
     }
