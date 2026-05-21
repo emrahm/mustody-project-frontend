@@ -375,4 +375,113 @@ export const adminEmailQueueAPI = {
   delete: (id: string) => api.delete(`/admin/email-queue/${id}`),
 };
 
+// Contract Template types
+export interface ContractTemplateParam {
+  name: string;
+  description: string;
+  required: boolean;
+}
+
+export interface ContractTemplate {
+  id: string;
+  tenant_id: string | null;
+  user_id: string | null;
+  name: string;
+  description: string;
+  type: 'wasm' | 'evm';
+  template_content: string; // base64 encoded bytes from backend
+  parameters: ContractTemplateParam[];
+  is_active: boolean;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SimulateResult {
+  rendered: string;
+  params_used: Record<string, string>;
+}
+
+export const contractTemplateAPI = {
+  list: () =>
+    api.get<{ templates: ContractTemplate[] }>('/contract-templates'),
+
+  get: (id: string) =>
+    api.get<ContractTemplate>(`/contract-templates/${id}`),
+
+  create: (data: { name: string; description: string; type: 'wasm' | 'evm'; template_content: string; parameters: ContractTemplateParam[] }) =>
+    api.post<ContractTemplate>('/contract-templates', data),
+
+  update: (id: string, data: { name: string; description: string; type: 'wasm' | 'evm'; template_content: string; parameters: ContractTemplateParam[] }) =>
+    api.put<ContractTemplate>(`/contract-templates/${id}`, data),
+
+  delete: (id: string) =>
+    api.delete(`/contract-templates/${id}`),
+
+  simulate: (id: string, params: Record<string, string>) =>
+    api.post<SimulateResult>(`/contract-templates/${id}/simulate`, { params }),
+};
+
+// Deployed Contract types
+export type ContractDeployStatus = 'pending' | 'deploying' | 'deployed' | 'failed' | 'verifying' | 'verified';
+
+export interface DeployedContract {
+  id: string;
+  tenant_id: string;
+  user_id: string | null;
+  template_id: string | null;
+  chain_id: string;
+  owner_address: string;
+  contract_name: string;
+  contract_address: string;
+  deploy_tx_hash: string;
+  verify_tx_hash: string;
+  status: ContractDeployStatus;
+  params_used: Array<{ name: string; value: string }>;
+  rendered_source: string | null; // base64 encoded
+  is_deployed: boolean;
+  verified_source: string | null; // base64 encoded
+  solc_version: string;
+  error_message: string;
+  deployed_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const deployedContractAPI = {
+  list: () =>
+    api.get<{ contracts: DeployedContract[] }>('/deployed-contracts'),
+
+  get: (id: string) =>
+    api.get<DeployedContract>(`/deployed-contracts/${id}`),
+
+  create: (data: {
+    template_id?: string;
+    chain_id: string;
+    owner_address: string;
+    contract_name: string;
+    params_used?: Array<{ name: string; value: string }>;
+    rendered_source?: string;
+    solc_version?: string;
+  }) => api.post<DeployedContract>('/deployed-contracts', data),
+
+  update: (id: string, data: {
+    chain_id?: string;
+    owner_address?: string;
+    contract_name?: string;
+    params_used?: Array<{ name: string; value: string }>;
+    rendered_source?: string;
+    solc_version?: string;
+  }) => api.put(`/deployed-contracts/${id}`, data),
+
+  markDeployed: (id: string, contractAddress: string, deployTxHash: string) =>
+    api.post(`/deployed-contracts/${id}/mark-deployed`, { contract_address: contractAddress, deploy_tx_hash: deployTxHash }),
+
+  verify: (id: string, verifiedSource: string) =>
+    api.post(`/deployed-contracts/${id}/verify`, { verified_source: verifiedSource }),
+
+  delete: (id: string) =>
+    api.delete(`/deployed-contracts/${id}`),
+};
+
 export default api;
