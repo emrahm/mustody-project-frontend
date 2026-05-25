@@ -477,6 +477,12 @@ export const deployedContractAPI = {
   markDeployed: (id: string, contractAddress: string, deployTxHash: string) =>
     api.post(`/deployed-contracts/${id}/mark-deployed`, { contract_address: contractAddress, deploy_tx_hash: deployTxHash }),
 
+  deploy: (id: string, renderedSource: string, contractName: string) =>
+    api.post<{ message: string; status: string }>(`/deployed-contracts/${id}/deploy`, {
+      rendered_source: renderedSource,
+      contract_name: contractName,
+    }),
+
   verify: (id: string, verifiedSource: string) =>
     api.post(`/deployed-contracts/${id}/verify`, { verified_source: verifiedSource }),
 

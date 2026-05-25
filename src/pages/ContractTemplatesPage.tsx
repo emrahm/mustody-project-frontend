@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation } from 'wouter';
 import {
-import {
   Box, Card, CardContent, Typography, Button, Table, TableBody,
   TableCell, TableContainer, TableHead, TableRow, Paper, Chip,
   IconButton, Tooltip, CircularProgress, Alert, Dialog, DialogTitle,
@@ -411,7 +410,7 @@ function CreateContractDialog({ open, template, onClose, onCreated }: CreateCont
     walletAPI.getChains().then((r) => setChains(r.data.chains || [])).catch(() => {});
     // Load user wallet for owner address
     walletAPI.getWallets().then((r) => {
-      const wallets = r.data.wallets || [];
+      const wallets = r.data.data?.wallets || [];
       const targetType = isWasm ? 'COSMOS' : 'EVM';
       const match = wallets.find((w) => w.mpc_chain_type === targetType && w.status === 'active');
       if (match) {
@@ -426,7 +425,7 @@ function CreateContractDialog({ open, template, onClose, onCreated }: CreateCont
 
   useEffect(() => {
     if (open && template) {
-      setContractName(template.name);
+      setContractName('');
       setChainId('');
       const defaults: Record<string, string> = {};
       (template.parameters || []).forEach((p) => { defaults[p.name] = ''; });
@@ -441,23 +440,34 @@ function CreateContractDialog({ open, template, onClose, onCreated }: CreateCont
     isWasm ? c.mpc_chain_type === 'COSMOS' : c.mpc_chain_type === 'EVM'
   );
 
-  const handleRender = async () => {
-    if (!template) return;
+  const handleRender = async (): Promise<string | null> => {
+    if (!template) return null;
     setError(null);
     try {
       const res = await contractTemplateAPI.simulate(template.id, paramValues);
       setRenderedSource(res.data.rendered);
       setRendered(true);
+      return res.data.rendered;
     } catch (e: any) {
       setError(e.response?.data?.error || e.message);
+      return null;
     }
   };
 
+  const requiredParamsFilled = (template?.parameters || [])
+    .filter((p) => p.required)
+    .every((p) => (paramValues[p.name] || '').trim() !== '');
+
+  const canSave = !!contractName && !!chainId && !!ownerAddress && requiredParamsFilled;
+
   const handleSave = async () => {
-    if (!template) return;
+    if (!template || !canSave) return;
     setSaving(true);
     setError(null);
     try {
+      // Always re-render to pick up latest param values
+      const result = await handleRender();
+      if (result === null) { setSaving(false); return; }
       const paramsUsed = Object.entries(paramValues).map(([name, value]) => ({ name, value }));
       const res = await deployedContractAPI.create({
         template_id: template.id,
@@ -465,7 +475,7 @@ function CreateContractDialog({ open, template, onClose, onCreated }: CreateCont
         owner_address: ownerAddress,
         contract_name: contractName,
         params_used: paramsUsed,
-        rendered_source: renderedSource,
+        rendered_source: result,
       });
       onCreated(res.data);
       onClose();
@@ -497,15 +507,15 @@ function CreateContractDialog({ open, template, onClose, onCreated }: CreateCont
 
         <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
           <TextField
-            label="Contract Name"
+            label="Contract Name *"
             value={contractName}
             onChange={(e) => setContractName(e.target.value)}
             size="small"
             sx={{ flex: 1, minWidth: 160 }}
           />
-          <FormControl size="small" sx={{ flex: 1, minWidth: 160 }}>
-            <InputLabel>Chain</InputLabel>
-            <Select value={chainId} label="Chain" onChange={(e) => setChainId(e.target.value)}>
+          <FormControl size="small" sx={{ flex: 1, minWidth: 160 }} required>
+            <InputLabel>Chain *</InputLabel>
+            <Select value={chainId} label="Chain *" onChange={(e) => setChainId(e.target.value)}>
               {filteredChains.map((c) => (
                 <MenuItem key={c.chain_id} value={c.chain_id}>
                   {c.display_name} ({c.chain_id})
@@ -514,13 +524,13 @@ function CreateContractDialog({ open, template, onClose, onCreated }: CreateCont
             </Select>
           </FormControl>
           <TextField
-            label="Owner Address"
+            label="Owner Address *"
             value={ownerAddress}
-            onChange={(e) => setOwnerAddress(e.target.value)}
             size="small"
             sx={{ flex: 2, minWidth: 200 }}
             placeholder={isWasm ? 'cosmos1...' : '0x...'}
-            InputProps={{ readOnly: !walletMissing }}
+            helperText="Auto-populated from active wallet — read-only"
+            InputProps={{ readOnly: true }}
           />
         </Box>
 
@@ -575,7 +585,7 @@ function CreateContractDialog({ open, template, onClose, onCreated }: CreateCont
         <Button
           variant="contained"
           onClick={handleSave}
-          disabled={saving || !contractName || !chainId || !ownerAddress || walletMissing}
+          disabled={saving || !canSave}
           startIcon={saving ? <CircularProgress size={16} /> : <RocketLaunch />}
         >
           Save Contract

@@ -14,18 +14,17 @@ const LINE_HEIGHT = 1.6;
 
 export default function SolEditor({ value, onChange, minRows = 20 }: SolEditorProps) {
   const taRef = useRef<HTMLTextAreaElement>(null);
+  const preRef = useRef<HTMLPreElement>(null);
 
-  // Sync scroll between textarea and highlight layer
   const handleScroll = () => {
     const ta = taRef.current;
-    const pre = ta?.parentElement?.querySelector('pre') as HTMLElement | null;
+    const pre = preRef.current;
     if (ta && pre) {
       pre.scrollTop = ta.scrollTop;
       pre.scrollLeft = ta.scrollLeft;
     }
   };
 
-  // Tab key support
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Tab') {
       e.preventDefault();
@@ -72,27 +71,19 @@ export default function SolEditor({ value, onChange, minRows = 20 }: SolEditorPr
           borderBottom: '1px solid rgba(255,255,255,0.08)',
         }}
       >
-        <Typography sx={{ fontSize: 11, color: '#a6adc8', fontFamily: FONT }}>
-          Solidity
-        </Typography>
+        <Typography sx={{ fontSize: 11, color: '#a6adc8', fontFamily: FONT }}>Solidity</Typography>
         <Typography sx={{ fontSize: 11, color: '#585b70', fontFamily: FONT }}>
           {value.split('\n').length} lines
         </Typography>
       </Box>
 
-      {/* Editor container: highlight layer + textarea overlay */}
-      <Box
-        sx={{
-          position: 'relative',
-          bgcolor: '#1e1e2e',
-          overflow: 'auto',
-          maxHeight: 520,
-        }}
-      >
-        {/* Syntax highlight layer (non-interactive) */}
+      {/* Stacking context: pre behind, textarea in front */}
+      <Box sx={{ position: 'relative', bgcolor: '#1e1e2e', overflow: 'hidden', maxHeight: 520 }}>
+        {/* Highlight layer — absolutely positioned, scrolled in sync with textarea */}
         <Highlight theme={themes.nightOwl} code={value || ' '} language="javascript">
           {({ tokens, getLineProps, getTokenProps }) => (
             <Box
+              ref={preRef}
               component="pre"
               aria-hidden
               sx={{
@@ -100,6 +91,8 @@ export default function SolEditor({ value, onChange, minRows = 20 }: SolEditorPr
                 position: 'absolute',
                 top: 0,
                 left: 0,
+                right: 0,
+                bottom: 0,
                 pointerEvents: 'none',
                 overflow: 'hidden',
                 zIndex: 1,
@@ -119,7 +112,7 @@ export default function SolEditor({ value, onChange, minRows = 20 }: SolEditorPr
           )}
         </Highlight>
 
-        {/* Editable textarea (transparent text, caret visible) */}
+        {/* Editable textarea — transparent text so highlight shows through, caret visible */}
         <textarea
           ref={taRef}
           value={value}
@@ -138,6 +131,8 @@ export default function SolEditor({ value, onChange, minRows = 20 }: SolEditorPr
             caretColor: '#cdd6f4',
             resize: 'vertical',
             display: 'block',
+            overflow: 'auto',
+            maxHeight: 520,
           }}
         />
       </Box>

@@ -5,7 +5,7 @@ import {
   TableHead, TableRow, Paper, Chip, IconButton, Tooltip, CircularProgress,
   Alert, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Divider,
 } from '@mui/material';
-import { Refresh, Delete, CheckCircle, Visibility, VerifiedUser } from '@mui/icons-material';
+import { Refresh, Delete, Visibility, VerifiedUser, Fullscreen, FullscreenExit, Save } from '@mui/icons-material';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import SolEditor from '@/components/SolEditor';
@@ -36,22 +36,60 @@ interface DetailDialogProps {
 }
 
 function DetailDialog({ open, contract, onClose, onRefresh }: DetailDialogProps) {
-  const [markDeployedOpen, setMarkDeployedOpen] = useState(false);
+  const [fullScreen, setFullScreen] = useState(false);
   const [verifyOpen, setVerifyOpen] = useState(false);
-  const [contractAddress, setContractAddress] = useState('');
-  const [deployTxHash, setDeployTxHash] = useState('');
   const [verifiedSource, setVerifiedSource] = useState('');
   const [saving, setSaving] = useState(false);
+  const [updating, setUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [updateSuccess, setUpdateSuccess] = useState(false);
+
+  const [contractName, setContractName] = useState('');
+  const [editedSource, setEditedSource] = useState('');
+
+  useEffect(() => {
+    if (!contract) return;
+    setContractName(contract.contract_name || '');
+    const src = contract.rendered_source
+      ? (() => { try { return atob(contract.rendered_source); } catch { return contract.rendered_source; } })()
+      : '';
+    setEditedSource(src);
+    setError(null);
+    setUpdateSuccess(false);
+    setVerifyOpen(false);
+  }, [contract]);
 
   if (!contract) return null;
 
-  const handleMarkDeployed = async () => {
+  const canDeploy = !contract.is_deployed && contract.status !== 'deploying';
+  const isDirty = contractName !== contract.contract_name ||
+    editedSource !== (() => { try { return atob(contract.rendered_source ?? ''); } catch { return contract.rendered_source ?? ''; } })();
+
+  const handleUpdate = async () => {
+    setUpdating(true);
+    setError(null);
+    setUpdateSuccess(false);
+    try {
+      await deployedContractAPI.update(contract.id, {
+        contract_name: contractName,
+        chain_id: contract.chain_id,
+        owner_address: contract.owner_address,
+        rendered_source: editedSource,
+      });
+      setUpdateSuccess(true);
+      onRefresh();
+    } catch (e: any) {
+      setError(e.response?.data?.error || e.message);
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleDeploy = async () => {
     setSaving(true);
     setError(null);
     try {
-      await deployedContractAPI.markDeployed(contract.id, contractAddress, deployTxHash);
-      setMarkDeployedOpen(false);
+      await deployedContractAPI.deploy(contract.id, editedSource, contractName);
       onRefresh();
     } catch (e: any) {
       setError(e.response?.data?.error || e.message);
@@ -74,29 +112,29 @@ function DetailDialog({ open, contract, onClose, onRefresh }: DetailDialogProps)
     }
   };
 
-  const renderedText = contract.rendered_source
-    ? (() => {
-        try { return atob(contract.rendered_source); } catch { return contract.rendered_source; }
-      })()
-    : '';
-
   const verifiedText = contract.verified_source
-    ? (() => {
-        try { return atob(contract.verified_source); } catch { return contract.verified_source; }
-      })()
+    ? (() => { try { return atob(contract.verified_source); } catch { return contract.verified_source; } })()
     : '';
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
-      <DialogTitle>
-        {contract.contract_name}
-        <Box component="span" sx={{ ml: 1 }}><StatusChip status={contract.status} /></Box>
-        {contract.is_deployed && (
-          <Chip label="DEPLOYED" size="small" color="success" variant="outlined" sx={{ ml: 1 }} />
-        )}
+    <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth fullScreen={fullScreen}>
+      <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, pr: 1 }}>
+        <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+          {contract.contract_name}
+          <StatusChip status={contract.status} />
+          {contract.is_deployed && (
+            <Chip label="DEPLOYED" size="small" color="success" variant="outlined" />
+          )}
+        </Box>
+        <Tooltip title={fullScreen ? 'Exit fullscreen' : 'Fullscreen'}>
+          <IconButton size="small" onClick={() => setFullScreen((v) => !v)}>
+            {fullScreen ? <FullscreenExit /> : <Fullscreen />}
+          </IconButton>
+        </Tooltip>
       </DialogTitle>
-      <DialogContent dividers>
+      <DialogContent dividers sx={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+        {updateSuccess && <Alert severity="success" sx={{ mb: 2 }}>Saved.</Alert>}
 
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 2 }}>
           <Box sx={{ flex: 1, minWidth: 200 }}>
@@ -138,15 +176,27 @@ function DetailDialog({ open, contract, onClose, onRefresh }: DetailDialogProps)
           </>
         )}
 
-        {renderedText && (
-          <>
-            <Divider sx={{ my: 1 }} />
-            <Typography variant="subtitle2" gutterBottom>
-              {contract.is_deployed ? 'Source (read-only — deployed)' : 'Source / Instantiate Params'}
-            </Typography>
-            <SolEditor value={renderedText} onChange={() => {}} minRows={12} />
-          </>
-        )}
+        <Divider sx={{ my: 1 }} />
+        <Typography variant="subtitle2" gutterBottom>#NAME — Contract Name</Typography>
+        <TextField
+          value={contractName}
+          onChange={(e) => setContractName(e.target.value)}
+          size="small"
+          fullWidth
+          disabled={contract.is_deployed}
+          placeholder="Contract name (used as #NAME parameter)"
+          sx={{ mb: 2 }}
+        />
+
+        <Divider sx={{ my: 1 }} />
+        <Typography variant="subtitle2" gutterBottom>
+          {contract.is_deployed ? 'Source (read-only — deployed)' : 'Source (editable before deploy)'}
+        </Typography>
+        <SolEditor
+          value={editedSource}
+          onChange={contract.is_deployed ? () => {} : setEditedSource}
+          minRows={fullScreen ? 24 : 14}
+        />
 
         {verifiedText && (
           <>
@@ -156,54 +206,13 @@ function DetailDialog({ open, contract, onClose, onRefresh }: DetailDialogProps)
           </>
         )}
 
-        {/* Mark Deployed inline form */}
-        {markDeployedOpen && (
-          <>
-            <Divider sx={{ my: 2 }} />
-            <Typography variant="subtitle2" gutterBottom>Mark as Deployed</Typography>
-            <Box sx={{ display: 'flex', gap: 2, mb: 1 }}>
-              <TextField
-                label="Contract Address"
-                value={contractAddress}
-                onChange={(e) => setContractAddress(e.target.value)}
-                size="small"
-                sx={{ flex: 2 }}
-              />
-              <TextField
-                label="Deploy Tx Hash"
-                value={deployTxHash}
-                onChange={(e) => setDeployTxHash(e.target.value)}
-                size="small"
-                sx={{ flex: 2 }}
-              />
-              <Button
-                variant="contained"
-                color="success"
-                size="small"
-                onClick={handleMarkDeployed}
-                disabled={saving || !contractAddress || !deployTxHash}
-              >
-                {saving ? <CircularProgress size={16} /> : 'Confirm'}
-              </Button>
-              <Button size="small" onClick={() => setMarkDeployedOpen(false)}>Cancel</Button>
-            </Box>
-          </>
-        )}
-
-        {/* Verify inline form */}
         {verifyOpen && (
           <>
             <Divider sx={{ my: 2 }} />
             <Typography variant="subtitle2" gutterBottom>Submit Verified Source</Typography>
             <SolEditor value={verifiedSource} onChange={setVerifiedSource} minRows={10} />
             <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
-              <Button
-                variant="contained"
-                color="primary"
-                size="small"
-                onClick={handleVerify}
-                disabled={saving || !verifiedSource}
-              >
+              <Button variant="contained" color="primary" size="small" onClick={handleVerify} disabled={saving || !verifiedSource}>
                 {saving ? <CircularProgress size={16} /> : 'Submit'}
               </Button>
               <Button size="small" onClick={() => setVerifyOpen(false)}>Cancel</Button>
@@ -212,21 +221,31 @@ function DetailDialog({ open, contract, onClose, onRefresh }: DetailDialogProps)
         )}
       </DialogContent>
       <DialogActions>
-        {!contract.is_deployed && !markDeployedOpen && (
+        {!contract.is_deployed && isDirty && (
           <Button
-            startIcon={<CheckCircle />}
-            color="success"
-            onClick={() => setMarkDeployedOpen(true)}
+            startIcon={updating ? <CircularProgress size={16} /> : <Save />}
+            onClick={handleUpdate}
+            disabled={updating}
           >
-            Mark Deployed
+            {updating ? 'Saving…' : 'Update'}
           </Button>
         )}
-        {contract.is_deployed && !contract.verified_source && !verifyOpen && (
+        {canDeploy && (
           <Button
-            startIcon={<VerifiedUser />}
+            variant="contained"
             color="primary"
-            onClick={() => setVerifyOpen(true)}
+            onClick={handleDeploy}
+            disabled={saving || !contractName || !editedSource}
+            startIcon={saving ? <CircularProgress size={16} /> : undefined}
           >
+            {saving ? 'Deploying…' : 'Deploy'}
+          </Button>
+        )}
+        {contract.status === 'deploying' && (
+          <Chip label="Deploying…" color="info" size="small" sx={{ mr: 1 }} />
+        )}
+        {contract.is_deployed && !contract.verified_source && !verifyOpen && (
+          <Button startIcon={<VerifiedUser />} color="primary" onClick={() => setVerifyOpen(true)}>
             Submit Verified Source
           </Button>
         )}
