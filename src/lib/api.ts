@@ -392,6 +392,7 @@ export interface ContractTemplate {
   template_content: string; // base64 encoded bytes from backend
   parameters: ContractTemplateParam[];
   is_active: boolean;
+  is_system_template: boolean;
   created_by: string | null;
   created_at: string;
   updated_at: string;

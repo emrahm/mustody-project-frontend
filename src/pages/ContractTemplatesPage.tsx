@@ -760,12 +760,12 @@ export default function ContractTemplatesPage() {
                             </IconButton>
                           </Tooltip>
                         )}
-                        {canEdit && (
+                        {(isAdmin || (!t.is_system_template && isTenantAdmin)) && (
                           <>
                             <Tooltip title="Edit">
                               <IconButton size="small" onClick={() => openEditor(t)}><Edit fontSize="small" /></IconButton>
                             </Tooltip>
-                            {t.tenant_id && (
+                            {(isAdmin || t.tenant_id) && (
                               <Tooltip title="Delete">
                                 <IconButton size="small" color="error" onClick={() => handleDelete(t.id)}>
                                   <Delete fontSize="small" />
@@ -800,7 +800,7 @@ export default function ContractTemplatesPage() {
                   >
                     Simulate
                   </Button>
-                  {canEdit && (
+                  {(isAdmin || (!viewTemplate.is_system_template && isTenantAdmin)) && (
                     <Button
                       variant="contained"
                       startIcon={<Edit />}

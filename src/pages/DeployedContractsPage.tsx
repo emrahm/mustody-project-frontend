@@ -61,7 +61,9 @@ function DetailDialog({ open, contract, onClose, onRefresh }: DetailDialogProps)
 
   if (!contract) return null;
 
-  const canDeploy = !contract.is_deployed && contract.status !== 'deploying';
+  const isStuckDeploying = contract.status === 'deploying' &&
+    Date.now() - new Date(contract.updated_at).getTime() > 10 * 60 * 1000;
+  const canDeploy = !contract.is_deployed && (contract.status !== 'deploying' || isStuckDeploying);
   const isDirty = contractName !== contract.contract_name ||
     editedSource !== (() => { try { return atob(contract.rendered_source ?? ''); } catch { return contract.rendered_source ?? ''; } })();
 
