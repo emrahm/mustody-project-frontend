@@ -9,7 +9,6 @@ import {
 import {
   Add, ContentCopy, OpenInNew, Error as ErrorIcon,
   AccountBalanceWallet, Refresh, South,
-  ExpandMore, ExpandLess,
 } from '@mui/icons-material';
 import DashboardLayout from '@/components/DashboardLayout';
 import { walletAPI, PortfolioChain, PortfolioCoin } from '@/lib/api';
@@ -233,187 +232,128 @@ function DepositDialog({ open, onClose, coin, chain, onCreateWallet }: DepositDi
   );
 }
 
-// ─── ChainCard ────────────────────────────────────────────────────────────────
+// ─── CoinPanel ────────────────────────────────────────────────────────────────
 
-interface ChainCardProps {
+interface CoinPanelProps {
   chain: PortfolioChain;
   onCreateWallet: (type: string) => void;
   creating: boolean;
   onDeposit: (coin: PortfolioCoin, chain: PortfolioChain) => void;
 }
 
-function ChainCard({ chain, onCreateWallet, creating, onDeposit }: ChainCardProps) {
+function CoinPanel({ chain, onCreateWallet, creating, onDeposit }: CoinPanelProps) {
   const theme = useTheme();
   const accent = CHAIN_COLOR[chain.mpc_chain_type] ?? CHAIN_COLOR.EVM;
   const isActive = chain.wallet?.status === 'active';
   const isPending = chain.wallet?.status === 'pending';
-  const isFailed = chain.wallet?.status === 'failed';
-  const [open, setOpen] = useState(false);
   const [coins, setCoins] = useState<PortfolioCoin[]>(chain.coins);
   const [balanceLoading, setBalanceLoading] = useState(false);
 
-  const fetchBalances = useCallback(async () => {
+  useEffect(() => {
+    setCoins(chain.coins);
     if (!isActive || !chain.wallet?.id) return;
     setBalanceLoading(true);
-    try {
-      const res = await walletAPI.getBalance(chain.wallet.id, chain.chain_id);
-      const balances: Record<string, { balance: string; balance_usd?: string }> = {};
-      for (const b of (res.data.data ?? [])) {
-        balances[b.symbol] = { balance: b.balance, balance_usd: b.balance_usd };
-      }
-      setCoins(prev => prev.map(c => balances[c.symbol]
-        ? { ...c, balance: balances[c.symbol].balance, balance_usd: balances[c.symbol].balance_usd ?? c.balance_usd }
-        : c
-      ));
-    } finally {
-      setBalanceLoading(false);
-    }
-  }, [chain, isActive]);
-
-  const handleToggle = () => {
-    const next = !open;
-    setOpen(next);
-    if (next && isActive) fetchBalances();
-  };
+    walletAPI.getBalance(chain.wallet.id, chain.chain_id).then(res => {
+      const map: Record<string, { balance: string; balance_usd?: string }> = {};
+      for (const b of (res.data.data ?? [])) map[b.symbol] = b;
+      setCoins(prev => prev.map(c => map[c.symbol] ? { ...c, ...map[c.symbol] } : c));
+    }).finally(() => setBalanceLoading(false));
+  }, [chain]);
 
   return (
-    <Card variant="outlined" sx={{ mb: 1.5, borderRadius: 2.5, overflow: 'hidden',
-      borderColor: open && isActive ? alpha(accent.color, 0.35) : 'divider',
-      transition: 'border-color 0.2s, box-shadow 0.2s',
-      '&:hover': { boxShadow: `0 4px 20px ${alpha(accent.color, 0.1)}` },
-    }}>
-      {/* ── Chain header — clickable ── */}
-      <Box
-        onClick={handleToggle}
-        sx={{
-          display: 'flex', alignItems: 'center', gap: 2, px: 2, py: 1.75,
-          cursor: 'pointer',
-          bgcolor: open ? alpha(accent.color, 0.05) : 'transparent',
-          transition: 'background 0.15s',
-          '&:hover': { bgcolor: alpha(accent.color, 0.07) },
-        }}
-      >
-        <ImgAvatar src={CHAIN_ICON[chain.chain_id]} alt={chain.display_name} size={40}
-          fallback={chain.chain_id.slice(0, 2).toUpperCase()} />
-
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-            <Typography fontWeight={700} fontSize="0.95rem" color="text.primary">
-              {chain.display_name}
-            </Typography>
-            <Chip label={chain.mpc_chain_type} size="small" sx={{
-              height: 18, fontSize: '0.62rem', fontWeight: 700,
-              bgcolor: accent.bg, color: accent.color,
-            }} />
+    <Card variant="outlined" sx={{ borderRadius: 2.5, height: '100%', display: 'flex', flexDirection: 'column' }}>
+      {/* Panel header */}
+      <Box sx={{ px: 2.5, py: 2, borderBottom: `1px solid ${theme.palette.divider}` }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <ImgAvatar src={CHAIN_ICON[chain.chain_id]} alt={chain.display_name} size={36}
+            fallback={chain.chain_id.slice(0, 2).toUpperCase()} />
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography fontWeight={700} fontSize="0.95rem">{chain.display_name}</Typography>
+            {isActive && chain.wallet?.public_address && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <Typography fontFamily="monospace" fontSize="0.7rem" color="text.secondary" noWrap>
+                  {truncate(chain.wallet.public_address)}
+                </Typography>
+                <CopyBtn text={chain.wallet.public_address} />
+                {chain.explorer_url && (
+                  <Tooltip title="Explorer">
+                    <IconButton size="small" component="a"
+                      href={`${chain.explorer_url}/address/${chain.wallet.public_address}`}
+                      target="_blank" sx={{ color: 'text.disabled', p: 0.25 }}>
+                      <OpenInNew sx={{ fontSize: 12 }} />
+                    </IconButton>
+                  </Tooltip>
+                )}
+              </Box>
+            )}
           </Box>
-          {isActive && chain.wallet?.public_address ? (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <Typography fontFamily="'Fira Code','JetBrains Mono',monospace"
-                fontSize="0.72rem" color="text.secondary" noWrap>
-                {truncate(chain.wallet.public_address)}
-              </Typography>
-              <CopyBtn text={chain.wallet.public_address} />
-              {chain.explorer_url && (
-                <Tooltip title="Explorer">
-                  <IconButton size="small" component="a"
-                    href={`${chain.explorer_url}/address/${chain.wallet.public_address}`}
-                    target="_blank" sx={{ color: 'text.disabled', p: 0.25 }}>
-                    <OpenInNew sx={{ fontSize: 12 }} />
-                  </IconButton>
-                </Tooltip>
-              )}
-            </Box>
-          ) : (
-            <Typography variant="caption" color="text.secondary">
-              {chain.native_symbol}{coins.length > 1 ? ` · ${coins.length} tokens` : ''}
-            </Typography>
-          )}
-        </Box>
-
-        {/* Right side */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
           {isActive && (
-            <Chip
-              icon={<Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: '#22c55e', ml: '6px !important' }} />}
+            <Chip icon={<Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: '#22c55e', ml: '6px !important' }} />}
               label="Active" size="small"
-              sx={{ bgcolor: 'rgba(34,197,94,0.1)', color: '#22c55e', fontWeight: 700, fontSize: '0.72rem' }}
-            />
+              sx={{ bgcolor: 'rgba(34,197,94,0.1)', color: '#22c55e', fontWeight: 700, fontSize: '0.72rem' }} />
           )}
           {isPending && (
-            <Chip
-              icon={<CircularProgress size={10} sx={{ color: '#f59e0b', ml: '6px !important' }} />}
+            <Chip icon={<CircularProgress size={10} sx={{ color: '#f59e0b', ml: '6px !important' }} />}
               label="Creating…" size="small"
-              sx={{ bgcolor: 'rgba(245,158,11,0.1)', color: '#f59e0b', fontWeight: 700, fontSize: '0.72rem' }}
-            />
+              sx={{ bgcolor: 'rgba(245,158,11,0.1)', color: '#f59e0b', fontWeight: 700, fontSize: '0.72rem' }} />
           )}
-          {isFailed && (
-            <Chip icon={<ErrorIcon sx={{ fontSize: '14px !important', ml: '4px !important' }} />}
-              label="Failed" size="small" color="error" sx={{ fontWeight: 700, fontSize: '0.72rem' }} />
-          )}
-          {!chain.wallet && !creating && (
-            <Button size="small" variant="outlined" startIcon={<Add />}
-              onClick={e => { e.stopPropagation(); onCreateWallet(chain.mpc_chain_type); }}
-              sx={{ borderRadius: 2, fontWeight: 700, fontSize: '0.72rem',
-                borderColor: accent.color, color: accent.color,
-                '&:hover': { bgcolor: accent.bg, borderColor: accent.color } }}>
-              Create
-            </Button>
-          )}
-          {!chain.wallet && creating && <CircularProgress size={18} sx={{ color: accent.color }} />}
-          {open
-            ? <ExpandLess sx={{ fontSize: 18, color: 'text.disabled' }} />
-            : <ExpandMore sx={{ fontSize: 18, color: 'text.disabled' }} />}
         </Box>
       </Box>
 
       {isPending && <LinearProgress color="warning" sx={{ height: 2 }} />}
+      {balanceLoading && <LinearProgress sx={{ height: 2 }} />}
 
-      {/* ── Coin list — accordion ── */}
-      <Collapse in={open}>
-        <Divider />
-        <List disablePadding>
-          {balanceLoading && <LinearProgress sx={{ height: 2 }} />}
-          {coins.map((coin, idx) => (
-            <ListItem key={coin.coin_id} divider={idx < coins.length - 1}
+      {/* Coin list */}
+      {isActive ? (
+        <List disablePadding sx={{ flex: 1, overflowY: 'auto' }}>
+          {coins.map((coin, i) => (
+            <ListItem key={coin.coin_id} divider={i < coins.length - 1}
               secondaryAction={
                 <Tooltip title={`Deposit ${coin.symbol}`}>
-                  <IconButton size="small"
-                    onClick={() => onDeposit(coin, chain)}
+                  <IconButton size="small" onClick={() => onDeposit(coin, chain)}
                     sx={{ bgcolor: accent.bg, color: accent.color, borderRadius: 1.5,
                       '&:hover': { bgcolor: alpha(accent.color, 0.22) } }}>
                     <South sx={{ fontSize: 15 }} />
                   </IconButton>
                 </Tooltip>
               }
-              sx={{ py: 1.25, px: 2 }}>
+              sx={{ py: 1.25, px: 2.5 }}>
               <ListItemAvatar sx={{ minWidth: 48 }}>
                 <ImgAvatar src={COIN_ICON[coin.symbol.toUpperCase()]} alt={coin.symbol} size={34}
                   fallback={coin.symbol.slice(0, 3)} />
               </ListItemAvatar>
               <ListItemText
-                primary={
-                  <Typography fontSize="0.88rem" fontWeight={600} color="text.primary">
-                    {coin.display_name}
-                  </Typography>
-                }
-                secondary={
-                  <Typography variant="caption" color="text.secondary" fontWeight={500}>
-                    {coin.symbol}
-                  </Typography>
-                }
+                primary={<Typography fontSize="0.88rem" fontWeight={600}>{coin.display_name}</Typography>}
+                secondary={<Typography variant="caption" color="text.secondary">{coin.symbol}</Typography>}
               />
               <Box sx={{ textAlign: 'right', mr: 5 }}>
-                <Typography fontSize="0.88rem" fontWeight={700} color="text.primary">
-                  {parseFloat(coin.balance).toFixed(8)}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  ${coin.balance_usd}
-                </Typography>
+                <Typography fontSize="0.88rem" fontWeight={700}>{parseFloat(coin.balance).toFixed(8)}</Typography>
+                <Typography variant="caption" color="text.secondary">${coin.balance_usd}</Typography>
               </Box>
             </ListItem>
           ))}
         </List>
-      </Collapse>
+      ) : !chain.wallet ? (
+        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 4, gap: 1.5 }}>
+          <Avatar sx={{ width: 52, height: 52, bgcolor: alpha(accent.color, 0.12) }}>
+            <AccountBalanceWallet sx={{ fontSize: 24, color: accent.color }} />
+          </Avatar>
+          <Typography fontWeight={700} fontSize="0.9rem">No wallet yet</Typography>
+          <Typography variant="caption" color="text.secondary" textAlign="center" sx={{ px: 2 }}>
+            Create a {chain.mpc_chain_type} wallet to start receiving funds.
+          </Typography>
+          {!creating ? (
+            <Button size="small" variant="contained" startIcon={<Add />}
+              onClick={() => onCreateWallet(chain.mpc_chain_type)}
+              sx={{ mt: 0.5, borderRadius: 2, fontWeight: 700, bgcolor: accent.color,
+                '&:hover': { bgcolor: accent.color, filter: 'brightness(1.1)' } }}>
+              Create Wallet
+            </Button>
+          ) : (
+            <CircularProgress size={22} sx={{ color: accent.color, mt: 0.5 }} />
+          )}
+        </Box>
+      ) : null}
     </Card>
   );
 }
@@ -520,20 +460,23 @@ function MpcInfoBanner({ active }: { active: boolean }) {
 // ─── WalletPage ───────────────────────────────────────────────────────────────
 
 export default function WalletPage() {
+  const theme = useTheme();
   const [chains, setChains] = useState<PortfolioChain[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState<string | null>(null);
+  const [selectedChainId, setSelectedChainId] = useState<string | null>(null);
   const [depositState, setDepositState] = useState<{ coin: PortfolioCoin; chain: PortfolioChain } | null>(null);
   const [snack, setSnack] = useState<{ open: boolean; msg: string; ok: boolean }>({ open: false, msg: '', ok: true });
 
   const load = useCallback(async () => {
     try {
       const res = await walletAPI.getPortfolio();
-      setChains(res.data.data?.chains ?? []);
+      const loaded: PortfolioChain[] = res.data.data?.chains ?? [];
+      setChains(loaded);
+      setSelectedChainId(prev => prev ?? loaded[0]?.chain_id ?? null);
       setError(null);
     } catch (e: any) {
-      console.error('walletAPI.getPortfolio:', e?.response?.data ?? e);
       setError(e?.response?.data?.message || 'Failed to load portfolio.');
     } finally {
       setLoading(false);
@@ -562,10 +505,11 @@ export default function WalletPage() {
   };
 
   const activeCount = chains.filter(c => c.wallet?.status === 'active').length;
+  const selectedChain = chains.find(c => c.chain_id === selectedChainId) ?? null;
 
   return (
     <DashboardLayout>
-      <Box sx={{ p: { xs: 2, md: 3 }, maxWidth: 700, mx: 'auto' }}>
+      <Box sx={{ p: { xs: 2, md: 3 } }}>
 
         {/* Header */}
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
@@ -594,18 +538,74 @@ export default function WalletPage() {
         )}
 
         {/* Skeletons */}
-        {loading && [1, 2, 3].map(i => (
-          <Skeleton key={i} variant="rounded" height={120} sx={{ mb: 1.5, borderRadius: 2.5 }} />
-        ))}
+        {loading && (
+          <Box sx={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 2 }}>
+            <Box>
+              {[1, 2, 3].map(i => <Skeleton key={i} variant="rounded" height={64} sx={{ mb: 1, borderRadius: 2 }} />)}
+            </Box>
+            <Skeleton variant="rounded" height={300} sx={{ borderRadius: 2.5 }} />
+          </Box>
+        )}
 
-        {/* Chain cards */}
-        {!loading && !error && chains.map(chain => (
-          <ChainCard key={chain.chain_id} chain={chain}
-            onCreateWallet={handleCreate}
-            creating={creating === chain.mpc_chain_type}
-            onDeposit={(coin, ch) => setDepositState({ coin, chain: ch })}
-          />
-        ))}
+        {/* 2-column layout */}
+        {!loading && !error && chains.length > 0 && (
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '260px 1fr' }, gap: 2, alignItems: 'start' }}>
+
+            {/* Left: chain list */}
+            <Card variant="outlined" sx={{ borderRadius: 2.5, overflow: 'hidden' }}>
+              <List disablePadding>
+                {chains.map((chain, i) => {
+                  const accent = CHAIN_COLOR[chain.mpc_chain_type] ?? CHAIN_COLOR.EVM;
+                  const isActive = chain.wallet?.status === 'active';
+                  const isPending = chain.wallet?.status === 'pending';
+                  const isSelected = chain.chain_id === selectedChainId;
+                  return (
+                    <React.Fragment key={chain.chain_id}>
+                      {i > 0 && <Divider />}
+                      <ListItem
+                        onClick={() => setSelectedChainId(chain.chain_id)}
+                        sx={{
+                          cursor: 'pointer', py: 1.5, px: 2,
+                          bgcolor: isSelected ? alpha(accent.color, 0.08) : 'transparent',
+                          borderLeft: isSelected ? `3px solid ${accent.color}` : '3px solid transparent',
+                          transition: 'all 0.15s',
+                          '&:hover': { bgcolor: alpha(accent.color, 0.05) },
+                        }}
+                      >
+                        <ListItemAvatar sx={{ minWidth: 44 }}>
+                          <ImgAvatar src={CHAIN_ICON[chain.chain_id]} alt={chain.display_name} size={32}
+                            fallback={chain.chain_id.slice(0, 2).toUpperCase()} />
+                        </ListItemAvatar>
+                        <ListItemText
+                          primary={<Typography fontSize="0.88rem" fontWeight={isSelected ? 700 : 500}>{chain.display_name}</Typography>}
+                          secondary={
+                            <Typography variant="caption" color="text.secondary">{chain.native_symbol}</Typography>
+                          }
+                        />
+                        {isActive && <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: '#22c55e', flexShrink: 0 }} />}
+                        {isPending && <CircularProgress size={10} sx={{ color: '#f59e0b', flexShrink: 0 }} />}
+                        {!chain.wallet && (
+                          <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: 'text.disabled', flexShrink: 0 }} />
+                        )}
+                      </ListItem>
+                    </React.Fragment>
+                  );
+                })}
+              </List>
+            </Card>
+
+            {/* Right: coin panel */}
+            {selectedChain && (
+              <CoinPanel
+                key={selectedChain.chain_id}
+                chain={selectedChain}
+                onCreateWallet={handleCreate}
+                creating={creating === selectedChain.mpc_chain_type}
+                onDeposit={(coin, ch) => setDepositState({ coin, chain: ch })}
+              />
+            )}
+          </Box>
+        )}
 
         {/* Empty */}
         {!loading && !error && chains.length === 0 && (
