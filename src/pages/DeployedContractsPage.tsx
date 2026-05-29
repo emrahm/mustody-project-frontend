@@ -5,11 +5,11 @@ import {
   TableHead, TableRow, Paper, Chip, IconButton, Tooltip, CircularProgress,
   Alert, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Divider,
 } from '@mui/material';
-import { Refresh, Delete, Visibility, VerifiedUser, Fullscreen, FullscreenExit, Save } from '@mui/icons-material';
+import { Refresh, Delete, Visibility, VerifiedUser, Fullscreen, FullscreenExit, Save, OpenInNew } from '@mui/icons-material';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import SolEditor from '@/components/SolEditor';
-import { deployedContractAPI, DeployedContract, ContractDeployStatus } from '@/lib/api';
+import { deployedContractAPI, walletAPI, DeployedContract, ContractDeployStatus, ChainDefinition } from '@/lib/api';
 
 // ── Status chip ───────────────────────────────────────────────────────────────
 
@@ -32,11 +32,13 @@ interface DetailDialogProps {
   open: boolean;
   contract: DeployedContract | null;
   onClose: () => void;
-  onRefresh: () => void;
+  onRefresh: () => void;       // reload list, keep dialog open
+  onDeployed: () => void;      // reload list + close dialog
   onStatusUpdate: (id: string, patch: Partial<DeployedContract>) => void;
+  explorerUrl?: string;
 }
 
-function DetailDialog({ open, contract, onClose, onRefresh, onStatusUpdate }: DetailDialogProps) {
+function DetailDialog({ open, contract, onClose, onRefresh, onDeployed, onStatusUpdate, explorerUrl }: DetailDialogProps) {
   const [fullScreen, setFullScreen] = useState(false);
   const [verifyOpen, setVerifyOpen] = useState(false);
   const [verifiedSource, setVerifiedSource] = useState('');
@@ -113,7 +115,7 @@ function DetailDialog({ open, contract, onClose, onRefresh, onStatusUpdate }: De
     setError(null);
     try {
       await deployedContractAPI.deploy(contract.id, editedSource, contractName);
-      onRefresh();
+      onDeployed();
     } catch (e: any) {
       setError(e.response?.data?.error || e.message);
     } finally {
@@ -127,6 +129,7 @@ function DetailDialog({ open, contract, onClose, onRefresh, onStatusUpdate }: De
     try {
       await deployedContractAPI.verify(contract.id, verifiedSource);
       setVerifyOpen(false);
+      setVerifiedSource('');
       onRefresh();
     } catch (e: any) {
       setError(e.response?.data?.error || e.message);
@@ -166,18 +169,39 @@ function DetailDialog({ open, contract, onClose, onRefresh, onStatusUpdate }: De
           </Box>
           <Box sx={{ flex: 2, minWidth: 200 }}>
             <Typography variant="caption" color="text.secondary">Owner Address</Typography>
-            <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>{contract.owner_address}</Typography>
+            <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>
+              {explorerUrl && contract.owner_address ? (
+                <Box component="a" href={`${explorerUrl}/address/${contract.owner_address}`} target="_blank" rel="noopener noreferrer"
+                  sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, color: 'primary.main', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
+                  {contract.owner_address}<OpenInNew sx={{ fontSize: 14 }} />
+                </Box>
+              ) : contract.owner_address}
+            </Typography>
           </Box>
           {contract.contract_address && (
             <Box sx={{ flex: 2, minWidth: 200 }}>
               <Typography variant="caption" color="text.secondary">Contract Address</Typography>
-              <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>{contract.contract_address}</Typography>
+              <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>
+                {explorerUrl ? (
+                  <Box component="a" href={`${explorerUrl}/address/${contract.contract_address}`} target="_blank" rel="noopener noreferrer"
+                    sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, color: 'primary.main', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
+                    {contract.contract_address}<OpenInNew sx={{ fontSize: 14 }} />
+                  </Box>
+                ) : contract.contract_address}
+              </Typography>
             </Box>
           )}
           {contract.deploy_tx_hash && (
             <Box sx={{ flex: 2, minWidth: 200 }}>
               <Typography variant="caption" color="text.secondary">Deploy Tx Hash</Typography>
-              <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>{contract.deploy_tx_hash}</Typography>
+              <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>
+                {explorerUrl ? (
+                  <Box component="a" href={`${explorerUrl}/tx/${contract.deploy_tx_hash}`} target="_blank" rel="noopener noreferrer"
+                    sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, color: 'primary.main', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
+                    {contract.deploy_tx_hash}<OpenInNew sx={{ fontSize: 14 }} />
+                  </Box>
+                ) : contract.deploy_tx_hash}
+              </Typography>
             </Box>
           )}
           {contract.error_message && (
@@ -270,9 +294,14 @@ function DetailDialog({ open, contract, onClose, onRefresh, onStatusUpdate }: De
             <Typography variant="body2" color="info.main">Deploying…</Typography>
           </Box>
         )}
-        {contract.is_deployed && !contract.verified_source && !verifyOpen && (
+        {contract.is_deployed && contract.status !== 'verified' && !verifyOpen && (
           <Button startIcon={<VerifiedUser />} color="primary" onClick={() => setVerifyOpen(true)}>
             Submit Verified Source
+          </Button>
+        )}
+        {contract.is_deployed && contract.status === 'verified' && !verifyOpen && (
+          <Button startIcon={<VerifiedUser />} color="inherit" size="small" onClick={() => setVerifyOpen(true)}>
+            Re-submit Verified Source
           </Button>
         )}
         <Button onClick={onClose}>Close</Button>
@@ -295,6 +324,7 @@ export default function DeployedContractsPage() {
   const [error, setError] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [selected, setSelected] = useState<DeployedContract | null>(null);
+  const [chainMap, setChainMap] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -310,6 +340,16 @@ export default function DeployedContractsPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    walletAPI.getChains().then((res) => {
+      const map: Record<string, string> = {};
+      (res.data.chains || []).forEach((c: ChainDefinition) => {
+        if (c.explorer_url) map[c.chain_id] = c.explorer_url.replace(/\/$/, '');
+      });
+      setChainMap(map);
+    }).catch(() => {});
+  }, []);
 
   // SSE: watch all deploying contracts in the table
   useEffect(() => {
@@ -417,7 +457,14 @@ export default function DeployedContractsPage() {
                     </TableCell>
                     <TableCell>{c.chain_id}</TableCell>
                     <TableCell sx={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {c.contract_address || '—'}
+                      {c.contract_address
+                        ? chainMap[c.chain_id]
+                          ? <Box component="a" href={`${chainMap[c.chain_id]}/address/${c.contract_address}`} target="_blank" rel="noopener noreferrer"
+                              sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, color: 'primary.main', textDecoration: 'none', '&:hover': { textDecoration: 'underline' }, maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {c.contract_address}<OpenInNew sx={{ fontSize: 12, flexShrink: 0 }} />
+                            </Box>
+                          : c.contract_address
+                        : '—'}
                     </TableCell>
                     <TableCell><StatusChip status={c.status} />{c.status === 'deploying' && <CircularProgress size={12} sx={{ ml: 1, verticalAlign: 'middle' }} />}</TableCell>
                     <TableCell>
@@ -461,8 +508,10 @@ export default function DeployedContractsPage() {
         open={detailOpen}
         contract={selected}
         onClose={() => setDetailOpen(false)}
-        onRefresh={() => { load(); setDetailOpen(false); }}
+        onRefresh={load}
+        onDeployed={() => { load(); setDetailOpen(false); }}
         onStatusUpdate={handleStatusUpdate}
+        explorerUrl={selected ? chainMap[selected.chain_id] : undefined}
       />
     </DashboardLayout>
   );
