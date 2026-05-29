@@ -489,6 +489,37 @@ export const deployedContractAPI = {
 
   delete: (id: string) =>
     api.delete(`/deployed-contracts/${id}`),
+
+  /** SSE stream: calls onUpdate for each event until status != 'deploying' or aborted. */
+  statusStream: (
+    id: string,
+    onUpdate: (data: { status: string; contract_address: string; deploy_tx_hash: string; error_message: string }) => void,
+    signal?: AbortSignal,
+  ): void => {
+    const token = localStorage.getItem('auth_token');
+    const url = `${API_BASE_URL}/deployed-contracts/${id}/status-stream`;
+    fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal,
+    }).then(async (res) => {
+      if (!res.ok || !res.body) return;
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split('\n');
+        buf = lines.pop() ?? '';
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try { onUpdate(JSON.parse(line.slice(6))); } catch { /* ignore */ }
+          }
+        }
+      }
+    }).catch(() => { /* aborted or network error */ });
+  },
 };
 
 export default api;

@@ -33,9 +33,10 @@ interface DetailDialogProps {
   contract: DeployedContract | null;
   onClose: () => void;
   onRefresh: () => void;
+  onStatusUpdate: (id: string, patch: Partial<DeployedContract>) => void;
 }
 
-function DetailDialog({ open, contract, onClose, onRefresh }: DetailDialogProps) {
+function DetailDialog({ open, contract, onClose, onRefresh, onStatusUpdate }: DetailDialogProps) {
   const [fullScreen, setFullScreen] = useState(false);
   const [verifyOpen, setVerifyOpen] = useState(false);
   const [verifiedSource, setVerifiedSource] = useState('');
@@ -58,6 +59,26 @@ function DetailDialog({ open, contract, onClose, onRefresh }: DetailDialogProps)
     setUpdateSuccess(false);
     setVerifyOpen(false);
   }, [contract]);
+
+  // SSE: watch deploying status while dialog is open
+  useEffect(() => {
+    if (!open || !contract || contract.status !== 'deploying') return;
+    const ctrl = new AbortController();
+    deployedContractAPI.statusStream(
+      contract.id,
+      (data) => {
+        onStatusUpdate(contract.id, {
+          status: data.status as ContractDeployStatus,
+          contract_address: data.contract_address,
+          deploy_tx_hash: data.deploy_tx_hash,
+          error_message: data.error_message,
+          is_deployed: data.status === 'deployed',
+        });
+      },
+      ctrl.signal,
+    );
+    return () => ctrl.abort();
+  }, [open, contract?.id, contract?.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!contract) return null;
 
@@ -244,7 +265,10 @@ function DetailDialog({ open, contract, onClose, onRefresh }: DetailDialogProps)
           </Button>
         )}
         {contract.status === 'deploying' && (
-          <Chip label="Deploying…" color="info" size="small" sx={{ mr: 1 }} />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mr: 1 }}>
+            <CircularProgress size={16} />
+            <Typography variant="body2" color="info.main">Deploying…</Typography>
+          </Box>
         )}
         {contract.is_deployed && !contract.verified_source && !verifyOpen && (
           <Button startIcon={<VerifiedUser />} color="primary" onClick={() => setVerifyOpen(true)}>
@@ -286,6 +310,33 @@ export default function DeployedContractsPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // SSE: watch all deploying contracts in the table
+  useEffect(() => {
+    const deploying = contracts.filter((c) => c.status === 'deploying');
+    if (deploying.length === 0) return;
+    const controllers = deploying.map((c) => {
+      const ctrl = new AbortController();
+      deployedContractAPI.statusStream(
+        c.id,
+        (data) => handleStatusUpdate(c.id, {
+          status: data.status as ContractDeployStatus,
+          contract_address: data.contract_address,
+          deploy_tx_hash: data.deploy_tx_hash,
+          error_message: data.error_message,
+          is_deployed: data.status === 'deployed',
+        }),
+        ctrl.signal,
+      );
+      return ctrl;
+    });
+    return () => controllers.forEach((ctrl) => ctrl.abort());
+  }, [contracts.map((c) => c.id + c.status).join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleStatusUpdate = useCallback((id: string, patch: Partial<DeployedContract>) => {
+    setContracts((prev) => prev.map((c) => c.id === id ? { ...c, ...patch } : c));
+    setSelected((prev) => prev?.id === id ? { ...prev, ...patch } : prev);
+  }, []);
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('Delete this contract record?')) return;
@@ -368,7 +419,7 @@ export default function DeployedContractsPage() {
                     <TableCell sx={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {c.contract_address || '—'}
                     </TableCell>
-                    <TableCell><StatusChip status={c.status} /></TableCell>
+                    <TableCell><StatusChip status={c.status} />{c.status === 'deploying' && <CircularProgress size={12} sx={{ ml: 1, verticalAlign: 'middle' }} />}</TableCell>
                     <TableCell>
                       <Chip
                         label={c.is_deployed ? 'Yes' : 'No'}
@@ -411,6 +462,7 @@ export default function DeployedContractsPage() {
         contract={selected}
         onClose={() => setDetailOpen(false)}
         onRefresh={() => { load(); setDetailOpen(false); }}
+        onStatusUpdate={handleStatusUpdate}
       />
     </DashboardLayout>
   );
