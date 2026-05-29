@@ -471,23 +471,37 @@ function MpcInfoBanner({ active }: { active: boolean }) {
   const current = done ? SUMMARY_MESSAGE : MPC_MESSAGES[idx];
 
   return (
-    <Box sx={{ mb: 2.5, minHeight: 90 }}>
-      <Collapse in={visible}>
+    <Box sx={{ mb: 2.5 }}>
+      {/* Summary: collapse up when done */}
+      <Collapse in={done}>
         <Alert
-        icon={<span style={{ fontSize: '1.1rem', lineHeight: 1 }}>{current.icon}</span>}
-        severity={done ? 'success' : 'info'}
-        sx={{
-          mb: 2.5, borderRadius: 2,
-          bgcolor: done
-            ? alpha(theme.palette.success.main, 0.08)
-            : alpha(theme.palette.info.main, 0.08),
-          border: `1px solid ${done
-            ? alpha(theme.palette.success.main, 0.25)
-            : alpha(theme.palette.info.main, 0.25)}`,
-          '& .MuiAlert-message': { fontSize: '0.85rem', lineHeight: 1.6 },
-        }}
-      >
-        {!done && (
+          icon={<span style={{ fontSize: '1.1rem', lineHeight: 1 }}>{SUMMARY_MESSAGE.icon}</span>}
+          severity="success"
+          sx={{
+            mb: 2.5, borderRadius: 2,
+            bgcolor: alpha(theme.palette.success.main, 0.08),
+            border: `1px solid ${alpha(theme.palette.success.main, 0.25)}`,
+            '& .MuiAlert-message': { fontSize: '0.85rem', lineHeight: 1.6 },
+          }}
+        >
+          {SUMMARY_MESSAGE.text}
+        </Alert>
+      </Collapse>
+
+      {/* Info messages: fixed height, only opacity transitions */}
+      {!done && (
+        <Alert
+          icon={<span style={{ fontSize: '1.1rem', lineHeight: 1 }}>{MPC_MESSAGES[idx].icon}</span>}
+          severity="info"
+          sx={{
+            mb: 2.5, borderRadius: 2, minHeight: 90,
+            bgcolor: alpha(theme.palette.info.main, 0.08),
+            border: `1px solid ${alpha(theme.palette.info.main, 0.25)}`,
+            '& .MuiAlert-message': { fontSize: '0.85rem', lineHeight: 1.6 },
+            opacity: visible ? 1 : 0,
+            transition: 'opacity 0.3s ease',
+          }}
+        >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
             <Typography variant="caption" fontWeight={700} color="info.main" sx={{ textTransform: 'uppercase', letterSpacing: 0.5 }}>
               {active ? 'Creating your wallet…' : 'How MPC works'}
@@ -496,10 +510,9 @@ function MpcInfoBanner({ active }: { active: boolean }) {
               {idx + 1} / {MPC_MESSAGES.length}
             </Typography>
           </Box>
-        )}
-        {current.text}
-      </Alert>
-      </Collapse>
+          {MPC_MESSAGES[idx].text}
+        </Alert>
+      )}
     </Box>
   );
 }
