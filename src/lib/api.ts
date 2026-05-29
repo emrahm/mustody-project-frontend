@@ -324,7 +324,7 @@ export const walletAPI = {
 
   // Get balance for a wallet on a specific chain
   getBalance: (wallet_id: string, chain_id: string) =>
-    api.get<WalletBalance>(`/wallet/${wallet_id}/balance`, { params: { chain_id } }),
+    api.get<{ success: boolean; data: WalletBalance[] }>(`/wallet/${wallet_id}/balance`, { params: { chain_id } }),
 
   // Get all supported chains
   getChains: () =>

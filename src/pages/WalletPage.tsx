@@ -8,7 +8,7 @@ import {
 } from '@mui/material';
 import {
   Add, ContentCopy, OpenInNew, Error as ErrorIcon,
-  Shield, AccountBalanceWallet, Refresh, South,
+  AccountBalanceWallet, Refresh, South,
   ExpandMore, ExpandLess,
 } from '@mui/icons-material';
 import DashboardLayout from '@/components/DashboardLayout';
@@ -87,6 +87,8 @@ function CopyBtn({ text }: { text: string }) {
   );
 }
 
+import { QRCodeSVG } from 'qrcode.react';
+
 // ─── Deposit Dialog ───────────────────────────────────────────────────────────
 
 interface DepositDialogProps {
@@ -98,11 +100,19 @@ interface DepositDialogProps {
 }
 
 function DepositDialog({ open, onClose, coin, chain, onCreateWallet }: DepositDialogProps) {
+  const theme = useTheme();
   const accent = CHAIN_COLOR[chain?.mpc_chain_type ?? 'EVM'];
   const hasWallet = !!chain?.wallet?.public_address;
+  const address = chain?.wallet?.public_address ?? '';
+
+  const STEPS = [
+    { n: '1', label: 'Copy your address', desc: 'Use the address below or scan the QR code from your sending wallet.' },
+    { n: '2', label: `Select ${chain?.display_name} network`, desc: `On the sending side, make sure you choose the exact same network. Sending on the wrong network will result in permanent loss.` },
+    { n: '3', label: `Send ${coin?.symbol ?? ''}`, desc: 'Initiate the transfer. Funds typically arrive within a few minutes depending on network congestion.' },
+  ];
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth
       PaperProps={{ sx: { borderRadius: 3 } }}>
       <DialogTitle sx={{ pb: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
@@ -111,40 +121,93 @@ function DepositDialog({ open, onClose, coin, chain, onCreateWallet }: DepositDi
           <Chip label={chain?.display_name} size="small" sx={{ ml: 'auto', fontSize: '0.7rem' }} />
         </Box>
       </DialogTitle>
-      <DialogContent>
+
+      <DialogContent sx={{ pt: 0 }}>
         {hasWallet ? (
           <Box>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Send <strong>{coin?.symbol}</strong> only on the <strong>{chain?.display_name}</strong> network.
-            </Typography>
-            <Card variant="outlined" sx={{ borderRadius: 2 }}>
-              <CardContent sx={{ py: '12px !important', px: 2 }}>
-                <Typography fontFamily="'Fira Code','JetBrains Mono',monospace"
-                  fontSize="0.8rem" sx={{ wordBreak: 'break-all', lineHeight: 1.7 }}>
-                  {chain?.wallet?.public_address}
+            {/* QR + address */}
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start', mb: 2, flexWrap: 'wrap' }}>
+              {/* QR code */}
+              <Box sx={{
+                p: 1.5, borderRadius: 2, border: `1px solid ${alpha(accent.color, 0.25)}`,
+                bgcolor: '#fff', flexShrink: 0,
+              }}>
+                <QRCodeSVG value={address} size={110} />
+              </Box>
+
+              {/* Address box */}
+              <Box sx={{ flex: 1, minWidth: 180 }}>
+                <Typography variant="caption" color="text.secondary" fontWeight={600}
+                  sx={{ textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', mb: 0.75 }}>
+                  Your {chain?.mpc_chain_type} address
                 </Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
-                  <CopyBtn text={chain?.wallet?.public_address ?? ''} />
-                  <Typography variant="caption" color="text.disabled">Copy address</Typography>
-                  {chain?.explorer_url && (
-                    <Tooltip title="View on explorer">
-                      <IconButton size="small" component="a"
-                        href={`${chain.explorer_url}/address/${chain.wallet?.public_address}`}
-                        target="_blank" sx={{ color: 'text.disabled', p: 0.5, ml: 'auto' }}>
-                        <OpenInNew sx={{ fontSize: 13 }} />
-                      </IconButton>
-                    </Tooltip>
-                  )}
+                <Card variant="outlined" sx={{ borderRadius: 2, borderColor: alpha(accent.color, 0.3) }}>
+                  <CardContent sx={{ py: '10px !important', px: 1.5 }}>
+                    <Typography fontFamily="'Fira Code','JetBrains Mono',monospace"
+                      fontSize="0.75rem" sx={{ wordBreak: 'break-all', lineHeight: 1.8, color: 'text.primary' }}>
+                      {address}
+                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5, gap: 0.5 }}>
+                      <CopyBtn text={address} />
+                      <Typography variant="caption" color="text.disabled">Copy full address</Typography>
+                      {chain?.explorer_url && (
+                        <Tooltip title="View on explorer">
+                          <IconButton size="small" component="a"
+                            href={`${chain.explorer_url}/address/${address}`}
+                            target="_blank" sx={{ color: 'text.disabled', p: 0.5, ml: 'auto' }}>
+                            <OpenInNew sx={{ fontSize: 13 }} />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                    </Box>
+                  </CardContent>
+                </Card>
+
+                {/* MPC security note */}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mt: 1 }}>
+                  <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: '#22c55e', flexShrink: 0 }} />
+                  <Typography variant="caption" color="text.secondary" fontSize="0.72rem">
+                    MPC-secured — private key is never stored in one place
+                  </Typography>
                 </Box>
-              </CardContent>
-            </Card>
-            <Alert severity="warning" icon={false} sx={{ mt: 2, borderRadius: 2, fontSize: '0.75rem' }}>
-              ⚠️ Only send {coin?.symbol} on {chain?.display_name}. Wrong network = lost funds.
+              </Box>
+            </Box>
+
+            <Divider sx={{ my: 2 }} />
+
+            {/* Steps */}
+            <Typography variant="caption" fontWeight={700} color="text.secondary"
+              sx={{ textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', mb: 1.5 }}>
+              How to deposit
+            </Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
+              {STEPS.map(s => (
+                <Box key={s.n} sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
+                  <Box sx={{
+                    width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
+                    bgcolor: alpha(accent.color, 0.15), color: accent.color,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '0.7rem', fontWeight: 800,
+                  }}>{s.n}</Box>
+                  <Box>
+                    <Typography fontSize="0.82rem" fontWeight={700}>{s.label}</Typography>
+                    <Typography fontSize="0.78rem" color="text.secondary" lineHeight={1.5}>{s.desc}</Typography>
+                  </Box>
+                </Box>
+              ))}
+            </Box>
+
+            <Divider sx={{ my: 2 }} />
+
+            {/* Warning */}
+            <Alert severity="warning" icon={false} sx={{ borderRadius: 2, fontSize: '0.78rem', py: 1 }}>
+              ⚠️ Only send <strong>{coin?.symbol}</strong> on the <strong>{chain?.display_name}</strong> network.
+              Sending any other asset or using a different network will result in <strong>permanent loss of funds</strong>.
             </Alert>
           </Box>
         ) : (
           <Box sx={{ textAlign: 'center', py: 3 }}>
-            <Avatar sx={{ width: 64, height: 64, mx: 'auto', mb: 2, bgcolor: accent.bg }}>
+            <Avatar sx={{ width: 64, height: 64, mx: 'auto', mb: 2, bgcolor: alpha(accent.color, 0.12) }}>
               <AccountBalanceWallet sx={{ fontSize: 28, color: accent.color }} />
             </Avatar>
             <Typography fontWeight={700} gutterBottom>No wallet yet</Typography>
@@ -160,6 +223,7 @@ function DepositDialog({ open, onClose, coin, chain, onCreateWallet }: DepositDi
           </Box>
         )}
       </DialogContent>
+
       {hasWallet && (
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={onClose} sx={{ borderRadius: 2 }}>Close</Button>
@@ -184,7 +248,33 @@ function ChainCard({ chain, onCreateWallet, creating, onDeposit }: ChainCardProp
   const isActive = chain.wallet?.status === 'active';
   const isPending = chain.wallet?.status === 'pending';
   const isFailed = chain.wallet?.status === 'failed';
-  const [open, setOpen] = useState(isActive); // active chains open by default
+  const [open, setOpen] = useState(false);
+  const [coins, setCoins] = useState<PortfolioCoin[]>(chain.coins);
+  const [balanceLoading, setBalanceLoading] = useState(false);
+
+  const fetchBalances = useCallback(async () => {
+    if (!isActive || !chain.wallet?.id) return;
+    setBalanceLoading(true);
+    try {
+      const res = await walletAPI.getBalance(chain.wallet.id, chain.chain_id);
+      const balances: Record<string, { balance: string; balance_usd?: string }> = {};
+      for (const b of (res.data.data ?? [])) {
+        balances[b.symbol] = { balance: b.balance, balance_usd: b.balance_usd };
+      }
+      setCoins(prev => prev.map(c => balances[c.symbol]
+        ? { ...c, balance: balances[c.symbol].balance, balance_usd: balances[c.symbol].balance_usd ?? c.balance_usd }
+        : c
+      ));
+    } finally {
+      setBalanceLoading(false);
+    }
+  }, [chain, isActive]);
+
+  const handleToggle = () => {
+    const next = !open;
+    setOpen(next);
+    if (next && isActive) fetchBalances();
+  };
 
   return (
     <Card variant="outlined" sx={{ mb: 1.5, borderRadius: 2.5, overflow: 'hidden',
@@ -194,7 +284,7 @@ function ChainCard({ chain, onCreateWallet, creating, onDeposit }: ChainCardProp
     }}>
       {/* ── Chain header — clickable ── */}
       <Box
-        onClick={() => setOpen(v => !v)}
+        onClick={handleToggle}
         sx={{
           display: 'flex', alignItems: 'center', gap: 2, px: 2, py: 1.75,
           cursor: 'pointer',
@@ -235,7 +325,7 @@ function ChainCard({ chain, onCreateWallet, creating, onDeposit }: ChainCardProp
             </Box>
           ) : (
             <Typography variant="caption" color="text.secondary">
-              {chain.native_symbol}{chain.coins.length > 1 ? ` · ${chain.coins.length} tokens` : ''}
+              {chain.native_symbol}{coins.length > 1 ? ` · ${coins.length} tokens` : ''}
             </Typography>
           )}
         </Box>
@@ -282,8 +372,9 @@ function ChainCard({ chain, onCreateWallet, creating, onDeposit }: ChainCardProp
       <Collapse in={open}>
         <Divider />
         <List disablePadding>
-          {chain.coins.map((coin, idx) => (
-            <ListItem key={coin.coin_id} divider={idx < chain.coins.length - 1}
+          {balanceLoading && <LinearProgress sx={{ height: 2 }} />}
+          {coins.map((coin, idx) => (
+            <ListItem key={coin.coin_id} divider={idx < coins.length - 1}
               secondaryAction={
                 <Tooltip title={`Deposit ${coin.symbol}`}>
                   <IconButton size="small"
@@ -313,7 +404,7 @@ function ChainCard({ chain, onCreateWallet, creating, onDeposit }: ChainCardProp
               />
               <Box sx={{ textAlign: 'right', mr: 5 }}>
                 <Typography fontSize="0.88rem" fontWeight={700} color="text.primary">
-                  {parseFloat(coin.balance).toFixed(4)}
+                  {parseFloat(coin.balance).toFixed(8)}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
                   ${coin.balance_usd}
@@ -324,6 +415,92 @@ function ChainCard({ chain, onCreateWallet, creating, onDeposit }: ChainCardProp
         </List>
       </Collapse>
     </Card>
+  );
+}
+
+// ─── MpcInfoBanner ────────────────────────────────────────────────────────────
+
+const MPC_MESSAGES = [
+  {
+    text: 'Your private key is never stored in one place. It is split across multiple independent nodes using Multi-Party Computation (MPC) — a cryptographic technique used by leading custodians worldwide.',
+    icon: '🔐',
+  },
+  {
+    text: 'Even if one node is compromised, your funds remain safe. No single party — not even Mustody — can access your key alone.',
+    icon: '🛡️',
+  },
+  {
+    text: 'Signing a transaction requires a threshold of nodes to cooperate in real time. This eliminates single points of failure and protects against insider threats.',
+    icon: '🤝',
+  },
+  {
+    text: 'This process takes a moment because the nodes are performing a Distributed Key Generation (DKG) ceremony — securely negotiating your key shares without ever assembling the full key.',
+    icon: '⚙️',
+  },
+];
+
+const SUMMARY_MESSAGE = { text: 'MPC secured — your keys are safe across distributed nodes.', icon: '✅' };
+
+// words-per-minute reading speed → ms
+function readingMs(text: string, wpm = 180) {
+  return Math.max(3500, (text.split(/\s+/).length / wpm) * 60_000);
+}
+
+function MpcInfoBanner({ active }: { active: boolean }) {
+  const theme = useTheme();
+  const [idx, setIdx] = useState(0);
+  const [done, setDone] = useState(false);
+  const [visible, setVisible] = useState(true);
+
+  useEffect(() => {
+    if (done) return;
+    const msg = MPC_MESSAGES[idx];
+    const ms = readingMs(msg.text);
+    const t = setTimeout(() => {
+      if (idx < MPC_MESSAGES.length - 1) {
+        setVisible(false);
+        setTimeout(() => { setIdx(i => i + 1); setVisible(true); }, 300);
+      } else {
+        setVisible(false);
+        setTimeout(() => { setDone(true); setVisible(true); }, 300);
+      }
+    }, ms);
+    return () => clearTimeout(t);
+  }, [idx, done]);
+
+  const current = done ? SUMMARY_MESSAGE : MPC_MESSAGES[idx];
+
+  return (
+    <Box sx={{ mb: 2.5, minHeight: 90 }}>
+      <Collapse in={visible}>
+        <Alert
+        icon={<span style={{ fontSize: '1.1rem', lineHeight: 1 }}>{current.icon}</span>}
+        severity={done ? 'success' : 'info'}
+        sx={{
+          mb: 2.5, borderRadius: 2,
+          bgcolor: done
+            ? alpha(theme.palette.success.main, 0.08)
+            : alpha(theme.palette.info.main, 0.08),
+          border: `1px solid ${done
+            ? alpha(theme.palette.success.main, 0.25)
+            : alpha(theme.palette.info.main, 0.25)}`,
+          '& .MuiAlert-message': { fontSize: '0.85rem', lineHeight: 1.6 },
+        }}
+      >
+        {!done && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+            <Typography variant="caption" fontWeight={700} color="info.main" sx={{ textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              {active ? 'Creating your wallet…' : 'How MPC works'}
+            </Typography>
+            <Typography variant="caption" color="text.disabled">
+              {idx + 1} / {MPC_MESSAGES.length}
+            </Typography>
+          </Box>
+        )}
+        {current.text}
+      </Alert>
+      </Collapse>
+    </Box>
   );
 }
 
@@ -392,20 +569,14 @@ export default function WalletPage() {
           </Tooltip>
         </Box>
 
+        {/* MPC info banner */}
+        {!loading && !error && <MpcInfoBanner active={!!creating} />}
+
         {/* Error */}
         {!loading && error && (
           <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}
             action={<Button size="small" color="inherit" onClick={() => { setLoading(true); load(); }}>Retry</Button>}>
             {error}
-          </Alert>
-        )}
-
-        {/* MPC banner */}
-        {!loading && !error && activeCount > 0 && (
-          <Alert severity="success" icon={<Shield fontSize="small" />}
-            sx={{ mb: 2.5, borderRadius: 2, '& .MuiAlert-message': { display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' } }}>
-            <span>MPC secured — private keys split across multiple nodes</span>
-            <Chip label={`${activeCount} active`} size="small" color="success" sx={{ ml: 1, fontWeight: 700 }} />
           </Alert>
         )}
 
