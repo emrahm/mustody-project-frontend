@@ -209,7 +209,7 @@ export default function DashboardContent() {
     
     if (hasRole('tenant_admin')) {
       actions.push(
-        { title: 'Wallet Management', icon: <AccountBalanceWallet />, path: '/wallets', color: 'success' },
+        { title: 'Wallet Management', icon: <AccountBalanceWallet />, path: '/wallet', color: 'success' },
         { title: 'Team Settings', icon: <People />, path: '/team', color: 'primary' },
         { title: 'API Keys', icon: <Key />, path: '/api-keys', color: 'info' }
       );
@@ -219,7 +219,7 @@ export default function DashboardContent() {
     if (!hasRole('admin') && !hasRole('owner') && !hasRole('tenant_admin')) {
       actions.push(
         { title: 'Become Our Tenant', icon: <Business />, onClick: () => setTenantDialogOpen(true), color: 'primary' },
-        { title: 'View Wallets', icon: <AccountBalanceWallet />, path: '/wallets', color: 'success' }
+        { title: 'View Wallets', icon: <AccountBalanceWallet />, path: '/wallet', color: 'success' }
       );
     }
     
