@@ -5,10 +5,12 @@ import {
   alpha, useTheme, CircularProgress, Tooltip, Skeleton,
   Alert, Snackbar, LinearProgress, Collapse, Divider,
   Dialog, DialogTitle, DialogContent, DialogActions,
+  TextField, InputAdornment, Step, Stepper, StepLabel,
 } from '@mui/material';
 import {
   Add, ContentCopy, OpenInNew, Error as ErrorIcon,
-  AccountBalanceWallet, Refresh, South,
+  AccountBalanceWallet, Refresh, South, North,
+  CheckCircle, ArrowBack, Launch, WarningAmber,
 } from '@mui/icons-material';
 import DashboardLayout from '@/components/DashboardLayout';
 import { walletAPI, PortfolioChain, PortfolioCoin } from '@/lib/api';
@@ -232,6 +234,396 @@ function DepositDialog({ open, onClose, coin, chain, onCreateWallet }: DepositDi
   );
 }
 
+// ─── Withdraw Dialog ──────────────────────────────────────────────────────────
+
+type WithdrawStep = 'form' | 'review' | '2fa' | 'processing' | 'done';
+
+interface WithdrawDialogProps {
+  open: boolean;
+  onClose: () => void;
+  coin: PortfolioCoin | null;
+  chain: PortfolioChain | null;
+}
+
+function WithdrawDialog({ open, onClose, coin, chain }: WithdrawDialogProps) {
+  const theme = useTheme();
+  const accent = CHAIN_COLOR[chain?.mpc_chain_type ?? 'EVM'];
+
+  const [step, setStep] = useState<WithdrawStep>('form');
+  const [toAddress, setToAddress] = useState('');
+  const [amount, setAmount] = useState('');
+  const [memo, setMemo] = useState('');
+  const [addrError, setAddrError] = useState('');
+  const [amtError, setAmtError] = useState('');
+  const [sessionId, setSessionId] = useState('');
+  const [txHash, setTxHash] = useState('');
+  const [failReason, setFailReason] = useState('');
+
+  // Reset state when dialog opens
+  useEffect(() => {
+    if (open) {
+      setStep('form');
+      setToAddress('');
+      setAmount('');
+      setMemo('');
+      setAddrError('');
+      setAmtError('');
+      setSessionId('');
+      setTxHash('');
+      setFailReason('');
+    }
+  }, [open]);
+
+  const balance = parseFloat(coin?.balance ?? '0');
+  const amountNum = parseFloat(amount || '0');
+
+  // Basic address validation — non-empty, reasonable length
+  function validateAddress(addr: string): string {
+    if (!addr.trim()) return 'Recipient address is required';
+    if (addr.trim().length < 10) return 'Address appears too short';
+    if (chain?.mpc_chain_type === 'EVM' && !/^0x[0-9a-fA-F]{40}$/.test(addr.trim()))
+      return 'Invalid EVM address — must be 0x followed by 40 hex characters';
+    return '';
+  }
+
+  function validateAmount(val: string): string {
+    const n = parseFloat(val);
+    if (!val || isNaN(n) || n <= 0) return 'Enter a valid amount greater than 0';
+    if (n > balance) return `Exceeds available balance (${balance.toFixed(8)} ${coin?.symbol})`;
+    return '';
+  }
+
+  function handleNext() {
+    const ae = validateAddress(toAddress);
+    const ve = validateAmount(amount);
+    setAddrError(ae);
+    setAmtError(ve);
+    if (ae || ve) return;
+    setStep('review');
+  }
+
+  async function handleConfirm() {
+    if (!chain || !coin) return;
+    setStep('processing');
+    try {
+      const res = await walletAPI.withdraw({
+        chain_id: chain.chain_id,
+        symbol: coin.symbol,
+        to_address: toAddress.trim(),
+        amount,
+        memo: memo.trim() || undefined,
+      });
+      const sid = res.data.data.session_id;
+      setSessionId(sid);
+      // Poll for completion
+      pollStatus(sid);
+    } catch (e: any) {
+      const msg = e?.response?.data?.message || e?.message || 'Withdrawal failed';
+      setFailReason(msg);
+      setStep('done');
+    }
+  }
+
+  function pollStatus(sid: string) {
+    let attempts = 0;
+    const maxAttempts = 60; // 5 min at 5s intervals
+    const interval = setInterval(async () => {
+      attempts++;
+      try {
+        const res = await walletAPI.withdrawStatus(sid);
+        const { status, tx_hash, error } = res.data.data;
+        if (status === 'COMPLETED') {
+          clearInterval(interval);
+          setTxHash(tx_hash ?? '');
+          setStep('done');
+        } else if (status === 'FAILED' || status === 'TIMEOUT') {
+          clearInterval(interval);
+          setFailReason(error || 'Signing failed or timed out');
+          setStep('done');
+        }
+      } catch {
+        // network hiccup — keep polling
+      }
+      if (attempts >= maxAttempts) {
+        clearInterval(interval);
+        setFailReason('Timed out waiting for MPC signature. Check your notifications for the final status.');
+        setStep('done');
+      }
+    }, 5000);
+  }
+
+  const isEVM = chain?.mpc_chain_type === 'EVM';
+  const explorerBase = chain?.explorer_url ?? '';
+  const txUrl = txHash && explorerBase ? `${explorerBase}/tx/${txHash}` : '';
+
+  const STEPS_LABELS = ['Details', 'Review', 'Sign & Send'];
+  const stepIndex = step === 'form' ? 0 : step === 'review' ? 1 : 2;
+
+  return (
+    <Dialog open={open} onClose={step === 'processing' ? undefined : onClose}
+      maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
+
+      {/* Header */}
+      <DialogTitle sx={{ pb: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          {step === 'review' && (
+            <IconButton size="small" onClick={() => setStep('form')} sx={{ mr: -0.5 }}>
+              <ArrowBack fontSize="small" />
+            </IconButton>
+          )}
+          <ImgAvatar src={COIN_ICON[coin?.symbol.toUpperCase() ?? '']} alt={coin?.symbol ?? ''} size={28}
+            fallback={coin?.symbol.slice(0, 2) ?? ''} />
+          <Typography fontWeight={800} fontSize="1rem">
+            {step === 'done' ? (txHash ? 'Withdrawal Sent' : 'Withdrawal Failed') : `Withdraw ${coin?.symbol}`}
+          </Typography>
+          <Chip label={chain?.display_name} size="small" sx={{ ml: 'auto', fontSize: '0.7rem' }} />
+        </Box>
+      </DialogTitle>
+
+      <DialogContent sx={{ pt: 0 }}>
+
+        {/* Step indicator */}
+        {(step === 'form' || step === 'review' || step === 'processing') && (
+          <Stepper activeStep={stepIndex} sx={{ mb: 2.5, mt: 0.5 }} alternativeLabel>
+            {STEPS_LABELS.map(label => (
+              <Step key={label}>
+                <StepLabel sx={{ '& .MuiStepLabel-label': { fontSize: '0.72rem' } }}>{label}</StepLabel>
+              </Step>
+            ))}
+          </Stepper>
+        )}
+
+        {/* ── STEP 1: Form ── */}
+        {step === 'form' && (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+
+            {/* Balance summary */}
+            <Box sx={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              px: 2, py: 1.25, borderRadius: 2,
+              bgcolor: alpha(accent.color, 0.08), border: `1px solid ${alpha(accent.color, 0.2)}`,
+            }}>
+              <Box>
+                <Typography variant="caption" color="text.secondary" fontWeight={600}
+                  sx={{ textTransform: 'uppercase', letterSpacing: 0.5 }}>Available Balance</Typography>
+                <Typography fontWeight={800} fontSize="1.05rem" color={accent.color}>
+                  {balance.toFixed(8)} {coin?.symbol}
+                </Typography>
+              </Box>
+              <ImgAvatar src={COIN_ICON[coin?.symbol.toUpperCase() ?? '']} alt={coin?.symbol ?? ''} size={36}
+                fallback={coin?.symbol.slice(0, 2) ?? ''} />
+            </Box>
+
+            {/* Recipient address */}
+            <TextField
+              label="Recipient Address"
+              placeholder={isEVM ? '0x…' : 'Destination address'}
+              value={toAddress}
+              onChange={e => { setToAddress(e.target.value); setAddrError(''); }}
+              error={!!addrError}
+              helperText={addrError || `Enter a valid ${chain?.mpc_chain_type} address`}
+              fullWidth
+              size="small"
+              inputProps={{ style: { fontFamily: "'Fira Code','JetBrains Mono',monospace", fontSize: '0.82rem' } }}
+            />
+
+            {/* Amount */}
+            <TextField
+              label={`Amount (${coin?.symbol})`}
+              placeholder="0.00"
+              value={amount}
+              onChange={e => { setAmount(e.target.value); setAmtError(''); }}
+              error={!!amtError}
+              helperText={amtError || `Max: ${balance.toFixed(8)} ${coin?.symbol}`}
+              fullWidth
+              size="small"
+              type="number"
+              inputProps={{ min: 0, step: 'any' }}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <Button size="small" onClick={() => setAmount(balance.toFixed(8))}
+                      sx={{ minWidth: 0, px: 1, fontSize: '0.72rem', fontWeight: 700, color: accent.color }}>
+                      MAX
+                    </Button>
+                  </InputAdornment>
+                ),
+              }}
+            />
+
+            {/* Memo (optional) */}
+            <TextField
+              label="Memo / Tag (optional)"
+              placeholder="Payment reference or note"
+              value={memo}
+              onChange={e => setMemo(e.target.value)}
+              fullWidth
+              size="small"
+              helperText="Some exchanges require a memo/tag for deposits"
+            />
+
+            {/* Network warning */}
+            <Alert severity="warning" icon={<WarningAmber fontSize="small" />}
+              sx={{ borderRadius: 2, fontSize: '0.78rem', py: 0.75 }}>
+              Only send to a <strong>{chain?.display_name}</strong> address.
+              Sending to the wrong network results in <strong>permanent loss of funds</strong>.
+            </Alert>
+          </Box>
+        )}
+
+        {/* ── STEP 2: Review ── */}
+        {step === 'review' && (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            <Typography variant="caption" fontWeight={700} color="text.secondary"
+              sx={{ textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              Review your withdrawal
+            </Typography>
+
+            {[
+              { label: 'From', value: truncate(chain?.wallet?.public_address ?? '', 10, 6), mono: true },
+              { label: 'To', value: truncate(toAddress, 10, 6), mono: true },
+              { label: 'Amount', value: `${amount} ${coin?.symbol}` },
+              { label: 'Network', value: chain?.display_name ?? '' },
+              ...(memo ? [{ label: 'Memo', value: memo }] : []),
+            ].map(row => (
+              <Box key={row.label} sx={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                px: 2, py: 1, borderRadius: 1.5,
+                bgcolor: theme.palette.action.hover,
+              }}>
+                <Typography variant="caption" color="text.secondary" fontWeight={600}>{row.label}</Typography>
+                <Typography fontSize="0.82rem" fontWeight={600}
+                  fontFamily={row.mono ? "'Fira Code','JetBrains Mono',monospace" : undefined}>
+                  {row.value}
+                </Typography>
+              </Box>
+            ))}
+
+            <Divider sx={{ my: 0.5 }} />
+
+            {/* MPC signing note */}
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, px: 1 }}>
+              <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: '#22c55e', mt: 0.75, flexShrink: 0 }} />
+              <Typography variant="caption" color="text.secondary" lineHeight={1.6}>
+                This transaction will be signed by the MPC cluster — your private key is never assembled in one place.
+                Signing typically takes 10–30 seconds.
+              </Typography>
+            </Box>
+
+            <Alert severity="error" icon={false} sx={{ borderRadius: 2, fontSize: '0.78rem', py: 0.75 }}>
+              ⚠️ <strong>This action is irreversible.</strong> Once broadcast, the transaction cannot be cancelled.
+              Verify the recipient address carefully before confirming.
+            </Alert>
+          </Box>
+        )}
+
+        {/* ── STEP 3: Processing ── */}
+        {step === 'processing' && (
+          <Box sx={{ textAlign: 'center', py: 3 }}>
+            <CircularProgress size={52} sx={{ color: accent.color, mb: 2 }} />
+            <Typography fontWeight={700} gutterBottom>Signing in progress…</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+              The MPC cluster is signing your transaction. This usually takes 10–30 seconds.
+            </Typography>
+            {sessionId && (
+              <Typography variant="caption" color="text.disabled" fontFamily="monospace">
+                Session: {truncate(sessionId, 8, 4)}
+              </Typography>
+            )}
+            <LinearProgress sx={{ mt: 2.5, borderRadius: 1, bgcolor: alpha(accent.color, 0.15),
+              '& .MuiLinearProgress-bar': { bgcolor: accent.color } }} />
+          </Box>
+        )}
+
+        {/* ── STEP 4: Done ── */}
+        {step === 'done' && (
+          <Box sx={{ textAlign: 'center', py: 2 }}>
+            {txHash ? (
+              <>
+                <Avatar sx={{ width: 60, height: 60, mx: 'auto', mb: 2, bgcolor: 'rgba(34,197,94,0.12)' }}>
+                  <CheckCircle sx={{ fontSize: 32, color: '#22c55e' }} />
+                </Avatar>
+                <Typography fontWeight={800} fontSize="1.05rem" gutterBottom>Transaction Broadcast</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  Your withdrawal has been signed and submitted to the network.
+                  It may take a few minutes to confirm.
+                </Typography>
+                <Card variant="outlined" sx={{ borderRadius: 2, mb: 2, textAlign: 'left' }}>
+                  <CardContent sx={{ py: '10px !important', px: 1.5 }}>
+                    <Typography variant="caption" color="text.secondary" fontWeight={600}
+                      sx={{ textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', mb: 0.5 }}>
+                      Transaction Hash
+                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <Typography fontFamily="'Fira Code','JetBrains Mono',monospace"
+                        fontSize="0.72rem" sx={{ wordBreak: 'break-all', flex: 1 }}>
+                        {txHash}
+                      </Typography>
+                      <CopyBtn text={txHash} />
+                    </Box>
+                  </CardContent>
+                </Card>
+                {txUrl && (
+                  <Button variant="outlined" size="small" startIcon={<Launch fontSize="small" />}
+                    component="a" href={txUrl} target="_blank"
+                    sx={{ borderRadius: 2, fontWeight: 700, borderColor: accent.color, color: accent.color }}>
+                    View on Explorer
+                  </Button>
+                )}
+              </>
+            ) : (
+              <>
+                <Avatar sx={{ width: 60, height: 60, mx: 'auto', mb: 2, bgcolor: 'rgba(239,68,68,0.12)' }}>
+                  <ErrorIcon sx={{ fontSize: 32, color: '#ef4444' }} />
+                </Avatar>
+                <Typography fontWeight={800} fontSize="1.05rem" gutterBottom>Withdrawal Failed</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  {failReason || 'An unexpected error occurred. Please try again.'}
+                </Typography>
+                <Button variant="outlined" size="small" onClick={() => setStep('form')}
+                  sx={{ borderRadius: 2, fontWeight: 700 }}>
+                  Try Again
+                </Button>
+              </>
+            )}
+          </Box>
+        )}
+      </DialogContent>
+
+      <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+        {step === 'form' && (
+          <>
+            <Button onClick={onClose} sx={{ borderRadius: 2 }}>Cancel</Button>
+            <Button variant="contained" onClick={handleNext}
+              disabled={!toAddress || !amount}
+              sx={{ borderRadius: 2, fontWeight: 700, bgcolor: accent.color,
+                '&:hover': { bgcolor: accent.color, filter: 'brightness(1.1)' } }}>
+              Review
+            </Button>
+          </>
+        )}
+        {step === 'review' && (
+          <>
+            <Button onClick={() => setStep('form')} sx={{ borderRadius: 2 }}>Back</Button>
+            <Button variant="contained" onClick={handleConfirm}
+              sx={{ borderRadius: 2, fontWeight: 700, bgcolor: '#ef4444',
+                '&:hover': { bgcolor: '#dc2626' } }}>
+              Confirm Withdrawal
+            </Button>
+          </>
+        )}
+        {step === 'done' && (
+          <Button onClick={onClose} variant="contained" fullWidth
+            sx={{ borderRadius: 2, fontWeight: 700, bgcolor: accent.color,
+              '&:hover': { bgcolor: accent.color, filter: 'brightness(1.1)' } }}>
+            Close
+          </Button>
+        )}
+      </DialogActions>
+    </Dialog>
+  );
+}
+
 // ─── CoinPanel ────────────────────────────────────────────────────────────────
 
 interface CoinPanelProps {
@@ -239,9 +631,10 @@ interface CoinPanelProps {
   onCreateWallet: (type: string) => void;
   creating: boolean;
   onDeposit: (coin: PortfolioCoin, chain: PortfolioChain) => void;
+  onWithdraw: (coin: PortfolioCoin, chain: PortfolioChain) => void;
 }
 
-function CoinPanel({ chain, onCreateWallet, creating, onDeposit }: CoinPanelProps) {
+function CoinPanel({ chain, onCreateWallet, creating, onDeposit, onWithdraw }: CoinPanelProps) {
   const theme = useTheme();
   const accent = CHAIN_COLOR[chain.mpc_chain_type] ?? CHAIN_COLOR.EVM;
   const isActive = chain.wallet?.status === 'active';
@@ -307,30 +700,71 @@ function CoinPanel({ chain, onCreateWallet, creating, onDeposit }: CoinPanelProp
       {isActive ? (
         <List disablePadding sx={{ flex: 1, overflowY: 'auto' }}>
           {coins.map((coin, i) => (
-            <ListItem key={coin.coin_id} divider={i < coins.length - 1}
-              secondaryAction={
-                <Tooltip title={`Deposit ${coin.symbol}`}>
-                  <IconButton size="small" onClick={() => onDeposit(coin, chain)}
-                    sx={{ bgcolor: accent.bg, color: accent.color, borderRadius: 1.5,
-                      '&:hover': { bgcolor: alpha(accent.color, 0.22) } }}>
-                    <South sx={{ fontSize: 15 }} />
-                  </IconButton>
-                </Tooltip>
-              }
-              sx={{ py: 1.25, px: 2.5 }}>
-              <ListItemAvatar sx={{ minWidth: 48 }}>
+            <Box key={coin.coin_id}>
+              {i > 0 && <Divider />}
+              <Box sx={{
+                display: 'flex', alignItems: 'center', gap: 1.5,
+                py: 1.25, px: 2.5,
+              }}>
+                {/* Coin icon */}
                 <ImgAvatar src={COIN_ICON[coin.symbol.toUpperCase()]} alt={coin.symbol} size={34}
                   fallback={coin.symbol.slice(0, 3)} />
-              </ListItemAvatar>
-              <ListItemText
-                primary={<Typography fontSize="0.88rem" fontWeight={600}>{coin.display_name}</Typography>}
-                secondary={<Typography variant="caption" color="text.secondary">{coin.symbol}</Typography>}
-              />
-              <Box sx={{ textAlign: 'right', mr: 5 }}>
-                <Typography fontSize="0.88rem" fontWeight={700}>{parseFloat(coin.balance).toFixed(8)}</Typography>
-                <Typography variant="caption" color="text.secondary">${coin.balance_usd}</Typography>
+
+                {/* Name + symbol */}
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography fontSize="0.88rem" fontWeight={600} noWrap>{coin.display_name}</Typography>
+                  <Typography variant="caption" color="text.secondary">{coin.symbol}</Typography>
+                </Box>
+
+                {/* Balance */}
+                <Box sx={{ textAlign: 'right', flexShrink: 0 }}>
+                  <Typography fontSize="0.88rem" fontWeight={700} noWrap>
+                    {parseFloat(coin.balance).toFixed(6)} {coin.symbol}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" noWrap>
+                    ${coin.balance_usd ?? '0.00'}
+                  </Typography>
+                </Box>
+
+                {/* Action buttons */}
+                <Box sx={{ display: 'flex', gap: 0.75, flexShrink: 0 }}>
+                  <Tooltip title={`Withdraw ${coin.symbol}`}>
+                    <span>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<North sx={{ fontSize: 13 }} />}
+                        onClick={() => onWithdraw(coin, chain)}
+                        disabled={parseFloat(coin.balance) <= 0}
+                        sx={{
+                          borderRadius: 1.5, fontWeight: 700, fontSize: '0.72rem',
+                          px: 1.25, py: 0.5, minWidth: 0,
+                          borderColor: alpha('#ef4444', 0.5), color: '#ef4444',
+                          '&:hover': { borderColor: '#ef4444', bgcolor: alpha('#ef4444', 0.08) },
+                          '&.Mui-disabled': { opacity: 0.35 },
+                        }}>
+                        Send
+                      </Button>
+                    </span>
+                  </Tooltip>
+                  <Tooltip title={`Deposit ${coin.symbol}`}>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<South sx={{ fontSize: 13 }} />}
+                      onClick={() => onDeposit(coin, chain)}
+                      sx={{
+                        borderRadius: 1.5, fontWeight: 700, fontSize: '0.72rem',
+                        px: 1.25, py: 0.5, minWidth: 0,
+                        borderColor: alpha(accent.color, 0.5), color: accent.color,
+                        '&:hover': { borderColor: accent.color, bgcolor: alpha(accent.color, 0.08) },
+                      }}>
+                      Receive
+                    </Button>
+                  </Tooltip>
+                </Box>
               </Box>
-            </ListItem>
+            </Box>
           ))}
         </List>
       ) : !chain.wallet ? (
@@ -467,6 +901,7 @@ export default function WalletPage() {
   const [creating, setCreating] = useState<string | null>(null);
   const [selectedChainId, setSelectedChainId] = useState<string | null>(null);
   const [depositState, setDepositState] = useState<{ coin: PortfolioCoin; chain: PortfolioChain } | null>(null);
+  const [withdrawState, setWithdrawState] = useState<{ coin: PortfolioCoin; chain: PortfolioChain } | null>(null);
   const [snack, setSnack] = useState<{ open: boolean; msg: string; ok: boolean }>({ open: false, msg: '', ok: true });
 
   const load = useCallback(async () => {
@@ -602,6 +1037,7 @@ export default function WalletPage() {
                 onCreateWallet={handleCreate}
                 creating={creating === selectedChain.mpc_chain_type}
                 onDeposit={(coin, ch) => setDepositState({ coin, chain: ch })}
+                onWithdraw={(coin, ch) => setWithdrawState({ coin, chain: ch })}
               />
             )}
           </Box>
@@ -629,6 +1065,13 @@ export default function WalletPage() {
           setDepositState(null);
           if (t) handleCreate(t);
         }}
+      />
+
+      <WithdrawDialog
+        open={!!withdrawState}
+        onClose={() => setWithdrawState(null)}
+        coin={withdrawState?.coin ?? null}
+        chain={withdrawState?.chain ?? null}
       />
 
       <Snackbar open={snack.open} autoHideDuration={3500}

@@ -333,6 +333,43 @@ export const walletAPI = {
   // Tenant admin: look up a user's wallets by user_id
   getUserWallets: (userId: string) =>
     api.get<{ wallets: UserWallet[]; user: WalletUser }>(`/wallet/user/${userId}`),
+
+  // Initiate a withdrawal from the authenticated user's own wallet via MPC signing.
+  // Returns immediately with status=PENDING; poll withdrawStatus for the tx_hash.
+  withdraw: (req: {
+    chain_id: string;
+    symbol: string;
+    to_address: string;
+    amount: string;
+    memo?: string;
+  }) =>
+    api.post<{
+      success: boolean;
+      data: {
+        session_id: string;
+        status: 'PENDING' | 'COMPLETED' | 'FAILED';
+        from: string;
+        to: string;
+        amount: string;
+        symbol: string;
+        chain_id: string;
+        tx_hash?: string;
+      };
+    }>('/wallet/withdraw', req),
+
+  // Poll the status of a withdrawal signing session.
+  withdrawStatus: (sessionId: string) =>
+    api.get<{
+      success: boolean;
+      data: {
+        session_id: string;
+        status: 'PENDING' | 'COMPLETED' | 'FAILED' | 'TIMEOUT';
+        tx_hash?: string;
+        error?: string;
+        created_at: string;
+        updated_at: string;
+      };
+    }>(`/wallet/withdraw/${sessionId}`),
 };
 
 export const adminWalletAPI = {
