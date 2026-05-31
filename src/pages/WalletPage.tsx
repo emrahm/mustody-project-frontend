@@ -258,6 +258,8 @@ function WithdrawDialog({ open, onClose, coin, chain }: WithdrawDialogProps) {
   const [sessionId, setSessionId] = useState('');
   const [txHash, setTxHash] = useState('');
   const [failReason, setFailReason] = useState('');
+  const [twoFACode, setTwoFACode] = useState('');
+  const [twoFAError, setTwoFAError] = useState('');
 
   // Reset state when dialog opens
   useEffect(() => {
@@ -271,6 +273,8 @@ function WithdrawDialog({ open, onClose, coin, chain }: WithdrawDialogProps) {
       setSessionId('');
       setTxHash('');
       setFailReason('');
+      setTwoFACode('');
+      setTwoFAError('');
     }
   }, [open]);
 
@@ -304,6 +308,15 @@ function WithdrawDialog({ open, onClose, coin, chain }: WithdrawDialogProps) {
 
   async function handleConfirm() {
     if (!chain || !coin) return;
+    setStep('2fa');
+  }
+
+  async function handleSubmitWithdraw() {
+    if (!chain || !coin) return;
+    if (!twoFACode.trim()) {
+      setTwoFAError('Please enter your 6-digit authentication code');
+      return;
+    }
     setStep('processing');
     try {
       const res = await walletAPI.withdraw({
@@ -312,13 +325,19 @@ function WithdrawDialog({ open, onClose, coin, chain }: WithdrawDialogProps) {
         to_address: toAddress.trim(),
         amount,
         memo: memo.trim() || undefined,
+        two_fa_code: twoFACode.trim(),
       });
       const sid = res.data.data.session_id;
       setSessionId(sid);
-      // Poll for completion
       pollStatus(sid);
     } catch (e: any) {
-      const msg = e?.response?.data?.message || e?.message || 'Withdrawal failed';
+      const data = e?.response?.data;
+      if (data?.requires_2fa) {
+        setTwoFAError(data.message || 'Invalid authentication code');
+        setStep('2fa');
+        return;
+      }
+      const msg = data?.message || e?.message || 'Withdrawal failed';
       setFailReason(msg);
       setStep('done');
     }
@@ -356,8 +375,8 @@ function WithdrawDialog({ open, onClose, coin, chain }: WithdrawDialogProps) {
   const explorerBase = chain?.explorer_url ?? '';
   const txUrl = txHash && explorerBase ? `${explorerBase}/tx/${txHash}` : '';
 
-  const STEPS_LABELS = ['Details', 'Review', 'Sign & Send'];
-  const stepIndex = step === 'form' ? 0 : step === 'review' ? 1 : 2;
+  const STEPS_LABELS = ['Details', 'Review', '2FA', 'Sign & Send'];
+  const stepIndex = step === 'form' ? 0 : step === 'review' ? 1 : step === '2fa' ? 2 : 3;
 
   return (
     <Dialog open={open} onClose={step === 'processing' ? undefined : onClose}
@@ -383,7 +402,7 @@ function WithdrawDialog({ open, onClose, coin, chain }: WithdrawDialogProps) {
       <DialogContent sx={{ pt: 0 }}>
 
         {/* Step indicator */}
-        {(step === 'form' || step === 'review' || step === 'processing') && (
+        {(step === 'form' || step === 'review' || step === '2fa' || step === 'processing') && (
           <Stepper activeStep={stepIndex} sx={{ mb: 2.5, mt: 0.5 }} alternativeLabel>
             {STEPS_LABELS.map(label => (
               <Step key={label}>
@@ -517,7 +536,34 @@ function WithdrawDialog({ open, onClose, coin, chain }: WithdrawDialogProps) {
           </Box>
         )}
 
-        {/* ── STEP 3: Processing ── */}
+        {/* ── STEP 3: 2FA ── */}
+        {step === '2fa' && (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center', py: 1 }}>
+            <Avatar sx={{ width: 56, height: 56, bgcolor: alpha(accent.color, 0.12) }}>
+              <span style={{ fontSize: '1.6rem' }}>🔐</span>
+            </Avatar>
+            <Box sx={{ textAlign: 'center' }}>
+              <Typography fontWeight={700} gutterBottom>Two-Factor Authentication</Typography>
+              <Typography variant="body2" color="text.secondary">
+                Enter the 6-digit code from your authenticator app to confirm this withdrawal.
+              </Typography>
+            </Box>
+            <TextField
+              label="Authentication Code"
+              placeholder="000000"
+              value={twoFACode}
+              onChange={e => { setTwoFACode(e.target.value.replace(/\D/g, '').slice(0, 6)); setTwoFAError(''); }}
+              error={!!twoFAError}
+              helperText={twoFAError}
+              inputProps={{ inputMode: 'numeric', style: { textAlign: 'center', fontSize: '1.5rem', letterSpacing: '0.4em', fontFamily: 'monospace' } }}
+              sx={{ width: 220 }}
+              autoFocus
+              onKeyDown={e => { if (e.key === 'Enter') handleSubmitWithdraw(); }}
+            />
+          </Box>
+        )}
+
+        {/* ── STEP 4: Processing ── */}
         {step === 'processing' && (
           <Box sx={{ textAlign: 'center', py: 3 }}>
             <CircularProgress size={52} sx={{ color: accent.color, mb: 2 }} />
@@ -609,6 +655,17 @@ function WithdrawDialog({ open, onClose, coin, chain }: WithdrawDialogProps) {
               sx={{ borderRadius: 2, fontWeight: 700, bgcolor: '#ef4444',
                 '&:hover': { bgcolor: '#dc2626' } }}>
               Confirm Withdrawal
+            </Button>
+          </>
+        )}
+        {step === '2fa' && (
+          <>
+            <Button onClick={() => setStep('review')} sx={{ borderRadius: 2 }}>Back</Button>
+            <Button variant="contained" onClick={handleSubmitWithdraw}
+              disabled={twoFACode.length !== 6}
+              sx={{ borderRadius: 2, fontWeight: 700, bgcolor: '#ef4444',
+                '&:hover': { bgcolor: '#dc2626' } }}>
+              Submit
             </Button>
           </>
         )}

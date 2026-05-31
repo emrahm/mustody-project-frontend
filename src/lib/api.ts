@@ -342,6 +342,7 @@ export const walletAPI = {
     to_address: string;
     amount: string;
     memo?: string;
+    two_fa_code?: string;
   }) =>
     api.post<{
       success: boolean;
