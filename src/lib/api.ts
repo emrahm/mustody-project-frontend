@@ -564,4 +564,26 @@ export const deployedContractAPI = {
   },
 };
 
+export interface CoinDefinition {
+  id: string;
+  chain_id: string;
+  tenant_id?: string | null;
+  symbol: string;
+  display_name: string;
+  manage_type: 'native' | 'erc20' | 'erc721' | 'cw20';
+  contract_address?: string | null;
+  decimals: number;
+  gas_symbol: string;
+  is_active: boolean;
+}
+
+export const coinAPI = {
+  getByContract: (contractId: string) =>
+    api.get<{ success: boolean; coin: CoinDefinition | null }>('/wallet/coins', { params: { contract_id: contractId } }),
+  add: (data: { contract_id: string; symbol: string; display_name: string; decimals?: number }) =>
+    api.post<{ success: boolean; coin: CoinDefinition }>('/wallet/coins', data),
+  remove: (coinId: string, contractId: string) =>
+    api.delete<{ success: boolean }>(`/wallet/coins/${coinId}`, { params: { contract_id: contractId } }),
+};
+
 export default api;

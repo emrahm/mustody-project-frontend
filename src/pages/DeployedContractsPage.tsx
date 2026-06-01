@@ -5,11 +5,11 @@ import {
   TableHead, TableRow, Paper, Chip, IconButton, Tooltip, CircularProgress,
   Alert, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Divider,
 } from '@mui/material';
-import { Refresh, Delete, Visibility, VerifiedUser, Fullscreen, FullscreenExit, Save, OpenInNew, ContentCopy } from '@mui/icons-material';
+import { Refresh, Delete, Visibility, VerifiedUser, Fullscreen, FullscreenExit, Save, OpenInNew, ContentCopy, Token } from '@mui/icons-material';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import SolEditor from '@/components/SolEditor';
-import { deployedContractAPI, walletAPI, DeployedContract, ContractDeployStatus, ChainDefinition } from '@/lib/api';
+import { deployedContractAPI, walletAPI, coinAPI, CoinDefinition, DeployedContract, ContractDeployStatus, ChainDefinition } from '@/lib/api';
 
 // ── Status chip ───────────────────────────────────────────────────────────────
 
@@ -39,6 +39,11 @@ interface DetailDialogProps {
 }
 
 function DetailDialog({ open, contract, onClose, onRefresh, onDeployed, onStatusUpdate, explorerUrl }: DetailDialogProps) {
+  const { user } = useAuth();
+  const isOwner = contract != null && (
+    (contract.deployed_by != null && contract.deployed_by === user?.id) ||
+    (contract.user_id != null && contract.user_id === user?.id)
+  );
   const [fullScreen, setFullScreen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [updating, setUpdating] = useState(false);
@@ -47,6 +52,14 @@ function DetailDialog({ open, contract, onClose, onRefresh, onDeployed, onStatus
 
   const [contractName, setContractName] = useState('');
   const [editedSource, setEditedSource] = useState('');
+
+  // Coin state
+  const [coin, setCoin] = useState<CoinDefinition | null>(null);
+  const [coinLoading, setCoinLoading] = useState(false);
+  const [coinSymbol, setCoinSymbol] = useState('');
+  const [coinName, setCoinName] = useState('');
+  const [coinDecimals, setCoinDecimals] = useState(18);
+  const [showCoinForm, setShowCoinForm] = useState(false);
 
   useEffect(() => {
     if (!contract) return;
@@ -57,7 +70,49 @@ function DetailDialog({ open, contract, onClose, onRefresh, onDeployed, onStatus
     setEditedSource(src);
     setError(null);
     setUpdateSuccess(false);
+    setShowCoinForm(false);
+    // Check if already a coin
+    if (contract.is_deployed && contract.contract_address) {
+      coinAPI.getByContract(contract.id).then((res) => setCoin(res.data.coin)).catch(() => setCoin(null));
+    } else {
+      setCoin(null);
+    }
   }, [contract?.id]);
+
+  const handleAddCoin = async () => {
+    if (!contract) return;
+    setCoinLoading(true);
+    setError(null);
+    try {
+      const res = await coinAPI.add({
+        contract_id: contract.id,
+        symbol: coinSymbol.trim().toUpperCase(),
+        display_name: coinName.trim() || coinSymbol.trim(),
+        decimals: coinDecimals,
+      });
+      setCoin(res.data.coin);
+      setShowCoinForm(false);
+    } catch (e: any) {
+      setError(e.response?.data?.message || e.message);
+    } finally {
+      setCoinLoading(false);
+    }
+  };
+
+  const handleRemoveCoin = async () => {
+    if (!coin || !contract) return;
+    if (!window.confirm(`Remove "${coin.symbol}" from the coin list?`)) return;
+    setCoinLoading(true);
+    setError(null);
+    try {
+      await coinAPI.remove(coin.id, contract.id);
+      setCoin(null);
+    } catch (e: any) {
+      setError(e.response?.data?.message || e.message);
+    } finally {
+      setCoinLoading(false);
+    }
+  };
 
   // SSE: watch deploying status while dialog is open
   useEffect(() => {
@@ -332,6 +387,67 @@ function DetailDialog({ open, contract, onClose, onRefresh, onDeployed, onStatus
             {saving ? 'Submitting…' : 'Re-submit Verified Source'}
           </Button>
         )}
+
+        {/* ── Coin actions ── */}
+        {contract.is_deployed && contract.contract_address && isOwner && !coin && !showCoinForm && (
+          <Button startIcon={<Token />} color="secondary" onClick={() => {
+            setCoinSymbol('');
+            setCoinName(contract.contract_name || '');
+            setCoinDecimals(18);
+            setShowCoinForm(true);
+          }}>
+            Add as Coin
+          </Button>
+        )}
+        {contract.is_deployed && isOwner && showCoinForm && (
+          <>
+            <TextField
+              size="small"
+              placeholder="Symbol (e.g. TKN)"
+              value={coinSymbol}
+              onChange={(e) => setCoinSymbol(e.target.value)}
+              sx={{ width: 120 }}
+            />
+            <TextField
+              size="small"
+              placeholder="Display name"
+              value={coinName}
+              onChange={(e) => setCoinName(e.target.value)}
+              sx={{ width: 160 }}
+            />
+            <TextField
+              size="small"
+              type="number"
+              placeholder="Decimals"
+              value={coinDecimals}
+              onChange={(e) => setCoinDecimals(Number(e.target.value))}
+              sx={{ width: 90 }}
+            />
+            <Button
+              variant="contained"
+              color="secondary"
+              size="small"
+              disabled={coinLoading || !coinSymbol.trim()}
+              onClick={handleAddCoin}
+              startIcon={coinLoading ? <CircularProgress size={14} /> : <Token />}
+            >
+              Confirm
+            </Button>
+            <Button size="small" onClick={() => setShowCoinForm(false)}>Cancel</Button>
+          </>
+        )}
+        {contract.is_deployed && isOwner && coin && (
+          <Button
+            startIcon={coinLoading ? <CircularProgress size={14} /> : <Token />}
+            color="warning"
+            size="small"
+            disabled={coinLoading}
+            onClick={handleRemoveCoin}
+          >
+            Remove from Coins ({coin.symbol})
+          </Button>
+        )}
+
         <Button onClick={onClose}>Close</Button>
       </DialogActions>
     </Dialog>
