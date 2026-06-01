@@ -481,6 +481,10 @@ export interface DeployedContract {
   is_deployed: boolean;
   verified_source: string | null; // base64 encoded
   solc_version: string;
+  oz_version: string;
+  optimizer_enabled: boolean;
+  optimizer_runs: number;
+  evm_version: string;
   error_message: string;
   deployed_by: string | null;
   created_at: string;

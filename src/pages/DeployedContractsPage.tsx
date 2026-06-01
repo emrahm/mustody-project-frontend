@@ -5,7 +5,7 @@ import {
   TableHead, TableRow, Paper, Chip, IconButton, Tooltip, CircularProgress,
   Alert, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Divider,
 } from '@mui/material';
-import { Refresh, Delete, Visibility, VerifiedUser, Fullscreen, FullscreenExit, Save, OpenInNew } from '@mui/icons-material';
+import { Refresh, Delete, Visibility, VerifiedUser, Fullscreen, FullscreenExit, Save, OpenInNew, ContentCopy } from '@mui/icons-material';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import SolEditor from '@/components/SolEditor';
@@ -40,8 +40,6 @@ interface DetailDialogProps {
 
 function DetailDialog({ open, contract, onClose, onRefresh, onDeployed, onStatusUpdate, explorerUrl }: DetailDialogProps) {
   const [fullScreen, setFullScreen] = useState(false);
-  const [verifyOpen, setVerifyOpen] = useState(false);
-  const [verifiedSource, setVerifiedSource] = useState('');
   const [saving, setSaving] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,8 +57,7 @@ function DetailDialog({ open, contract, onClose, onRefresh, onDeployed, onStatus
     setEditedSource(src);
     setError(null);
     setUpdateSuccess(false);
-    setVerifyOpen(false);
-  }, [contract]);
+  }, [contract?.id]);
 
   // SSE: watch deploying status while dialog is open
   useEffect(() => {
@@ -127,9 +124,8 @@ function DetailDialog({ open, contract, onClose, onRefresh, onDeployed, onStatus
     setSaving(true);
     setError(null);
     try {
-      await deployedContractAPI.verify(contract.id, verifiedSource);
-      setVerifyOpen(false);
-      setVerifiedSource('');
+      await deployedContractAPI.verify(contract.id, editedSource);
+      onStatusUpdate(contract.id, { status: 'verified', verified_source: btoa(unescape(encodeURIComponent(editedSource))) });
       onRefresh();
     } catch (e: any) {
       setError(e.response?.data?.error || e.message);
@@ -167,7 +163,14 @@ function DetailDialog({ open, contract, onClose, onRefresh, onDeployed, onStatus
             <Typography variant="caption" color="text.secondary">Chain ID</Typography>
             <Typography variant="body2">{contract.chain_id}</Typography>
           </Box>
+          {contract.solc_version && (
+            <Box sx={{ flex: 1, minWidth: 120 }}>
+              <Typography variant="caption" color="text.secondary">Solidity Version</Typography>
+              <Typography variant="body2">{contract.solc_version}</Typography>
+            </Box>
+          )}
           <Box sx={{ flex: 2, minWidth: 200 }}>
+
             <Typography variant="caption" color="text.secondary">Owner Address</Typography>
             <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>
               {explorerUrl && contract.owner_address ? (
@@ -211,6 +214,38 @@ function DetailDialog({ open, contract, onClose, onRefresh, onDeployed, onStatus
           )}
         </Box>
 
+        {contract.is_deployed && contract.solc_version && (
+          <>
+            <Divider sx={{ my: 1 }} />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+              <Typography variant="subtitle2">Etherscan Verification Parameters</Typography>
+              <Tooltip title="Copy all as text">
+                <IconButton size="small" onClick={() => navigator.clipboard.writeText(
+                  `Compiler: ${contract.solc_version}\nOptimization: ${contract.optimizer_enabled ? 'Yes' : 'No'}${contract.optimizer_enabled ? `, Runs: ${contract.optimizer_runs}` : ''}\nEVM Version: ${contract.evm_version || 'default'}`
+                )}>
+                  <ContentCopy sx={{ fontSize: 16 }} />
+                </IconButton>
+              </Tooltip>
+            </Box>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 1 }}>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Compiler Version</Typography>
+                <Typography variant="body2" fontFamily="monospace">{contract.solc_version}</Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Optimization</Typography>
+                <Typography variant="body2">
+                  {contract.optimizer_enabled ? `Yes, Runs: ${contract.optimizer_runs}` : 'No'}
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">EVM Version</Typography>
+                <Typography variant="body2" fontFamily="monospace">{contract.evm_version || 'default'}</Typography>
+              </Box>
+            </Box>
+          </>
+        )}
+
         {(contract.params_used || []).length > 0 && (
           <>
             <Divider sx={{ my: 1 }} />
@@ -248,22 +283,15 @@ function DetailDialog({ open, contract, onClose, onRefresh, onDeployed, onStatus
         {verifiedText && (
           <>
             <Divider sx={{ my: 1 }} />
-            <Typography variant="subtitle2" gutterBottom>Verified Source</Typography>
-            <SolEditor value={verifiedText} onChange={() => {}} minRows={10} />
-          </>
-        )}
-
-        {verifyOpen && (
-          <>
-            <Divider sx={{ my: 2 }} />
-            <Typography variant="subtitle2" gutterBottom>Submit Verified Source</Typography>
-            <SolEditor value={verifiedSource} onChange={setVerifiedSource} minRows={10} />
-            <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
-              <Button variant="contained" color="primary" size="small" onClick={handleVerify} disabled={saving || !verifiedSource}>
-                {saving ? <CircularProgress size={16} /> : 'Submit'}
-              </Button>
-              <Button size="small" onClick={() => setVerifyOpen(false)}>Cancel</Button>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+              <Typography variant="subtitle2">Verified Source</Typography>
+              <Tooltip title="Copy to clipboard">
+                <IconButton size="small" onClick={() => navigator.clipboard.writeText(verifiedText)}>
+                  <ContentCopy sx={{ fontSize: 16 }} />
+                </IconButton>
+              </Tooltip>
             </Box>
+            <SolEditor value={verifiedText} onChange={() => {}} minRows={10} />
           </>
         )}
       </DialogContent>
@@ -294,14 +322,14 @@ function DetailDialog({ open, contract, onClose, onRefresh, onDeployed, onStatus
             <Typography variant="body2" color="info.main">Deploying…</Typography>
           </Box>
         )}
-        {contract.is_deployed && contract.status !== 'verified' && !verifyOpen && (
-          <Button startIcon={<VerifiedUser />} color="primary" onClick={() => setVerifyOpen(true)}>
-            Submit Verified Source
+        {contract.is_deployed && contract.status !== 'verified' && (
+          <Button startIcon={saving ? <CircularProgress size={16} /> : <VerifiedUser />} color="primary" onClick={handleVerify} disabled={saving || !editedSource}>
+            {saving ? 'Submitting…' : 'Submit Verified Source'}
           </Button>
         )}
-        {contract.is_deployed && contract.status === 'verified' && !verifyOpen && (
-          <Button startIcon={<VerifiedUser />} color="inherit" size="small" onClick={() => setVerifyOpen(true)}>
-            Re-submit Verified Source
+        {contract.is_deployed && contract.status === 'verified' && (
+          <Button startIcon={saving ? <CircularProgress size={16} /> : <VerifiedUser />} color="inherit" size="small" onClick={handleVerify} disabled={saving || !editedSource}>
+            {saving ? 'Submitting…' : 'Re-submit Verified Source'}
           </Button>
         )}
         <Button onClick={onClose}>Close</Button>
@@ -331,7 +359,10 @@ export default function DeployedContractsPage() {
     setError(null);
     try {
       const res = await deployedContractAPI.list();
-      setContracts(res.data.contracts || []);
+      const list = res.data.contracts || [];
+      setContracts(list);
+      // Keep selected in sync without closing the dialog
+      setSelected((prev) => prev ? (list.find((c) => c.id === prev.id) ?? prev) : null);
     } catch (e: any) {
       setError(e.response?.data?.error || e.message);
     } finally {
