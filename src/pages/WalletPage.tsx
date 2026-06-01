@@ -236,16 +236,17 @@ function DepositDialog({ open, onClose, coin, chain, onCreateWallet }: DepositDi
 
 // ─── Withdraw Dialog ──────────────────────────────────────────────────────────
 
-type WithdrawStep = 'form' | 'review' | '2fa' | 'processing' | 'done';
+type WithdrawStep = 'form' | 'review' | '2fa' | 'setup_2fa' | 'processing' | 'done';
 
 interface WithdrawDialogProps {
   open: boolean;
   onClose: () => void;
   coin: PortfolioCoin | null;
   chain: PortfolioChain | null;
+  onSuccess?: (chainId: string) => void;
 }
 
-function WithdrawDialog({ open, onClose, coin, chain }: WithdrawDialogProps) {
+function WithdrawDialog({ open, onClose, coin, chain, onSuccess }: WithdrawDialogProps) {
   const theme = useTheme();
   const accent = CHAIN_COLOR[chain?.mpc_chain_type ?? 'EVM'];
 
@@ -260,6 +261,7 @@ function WithdrawDialog({ open, onClose, coin, chain }: WithdrawDialogProps) {
   const [failReason, setFailReason] = useState('');
   const [twoFACode, setTwoFACode] = useState('');
   const [twoFAError, setTwoFAError] = useState('');
+  const [failedAttempts, setFailedAttempts] = useState(0);
 
   // Reset state when dialog opens
   useEffect(() => {
@@ -275,6 +277,7 @@ function WithdrawDialog({ open, onClose, coin, chain }: WithdrawDialogProps) {
       setFailReason('');
       setTwoFACode('');
       setTwoFAError('');
+      setFailedAttempts(0);
     }
   }, [open]);
 
@@ -332,8 +335,21 @@ function WithdrawDialog({ open, onClose, coin, chain }: WithdrawDialogProps) {
       pollStatus(sid);
     } catch (e: any) {
       const data = e?.response?.data;
+      if (data?.setup_required) {
+        setStep('setup_2fa');
+        return;
+      }
       if (data?.requires_2fa) {
-        setTwoFAError(data.message || 'Invalid authentication code');
+        const newAttempts = failedAttempts + 1;
+        setFailedAttempts(newAttempts);
+        if (data?.force_logout || newAttempts >= 3) {
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('user_data');
+          window.location.href = '/login';
+          return;
+        }
+        setTwoFACode('');
+        setTwoFAError(`Invalid authentication code. ${3 - newAttempts} attempt${3 - newAttempts === 1 ? '' : 's'} remaining.`);
         setStep('2fa');
         return;
       }
@@ -355,6 +371,7 @@ function WithdrawDialog({ open, onClose, coin, chain }: WithdrawDialogProps) {
           clearInterval(interval);
           setTxHash(tx_hash ?? '');
           setStep('done');
+          if (chain) onSuccess?.(chain.chain_id);
         } else if (status === 'FAILED' || status === 'TIMEOUT') {
           clearInterval(interval);
           setFailReason(error || 'Signing failed or timed out');
@@ -536,6 +553,27 @@ function WithdrawDialog({ open, onClose, coin, chain }: WithdrawDialogProps) {
           </Box>
         )}
 
+        {/* ── STEP: Setup 2FA required ── */}
+        {step === 'setup_2fa' && (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center', py: 2, textAlign: 'center' }}>
+            <Avatar sx={{ width: 56, height: 56, bgcolor: 'rgba(245,158,11,0.12)' }}>
+              <span style={{ fontSize: '1.6rem' }}>🔒</span>
+            </Avatar>
+            <Typography fontWeight={700}>Two-Factor Authentication Required</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Withdrawals require 2FA to be enabled on your account. Please set it up first, then try again.
+            </Typography>
+            <Button
+              variant="contained"
+              href="/settings"
+              onClick={onClose}
+              sx={{ borderRadius: 2, fontWeight: 700, bgcolor: '#f59e0b', '&:hover': { bgcolor: '#d97706' } }}
+            >
+              Enable Two-Factor Authentication
+            </Button>
+          </Box>
+        )}
+
         {/* ── STEP 3: 2FA ── */}
         {step === '2fa' && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center', py: 1 }}>
@@ -637,6 +675,9 @@ function WithdrawDialog({ open, onClose, coin, chain }: WithdrawDialogProps) {
       </DialogContent>
 
       <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+        {step === 'setup_2fa' && (
+          <Button onClick={onClose} sx={{ borderRadius: 2 }}>Close</Button>
+        )}
         {step === 'form' && (
           <>
             <Button onClick={onClose} sx={{ borderRadius: 2 }}>Cancel</Button>
@@ -689,9 +730,10 @@ interface CoinPanelProps {
   creating: boolean;
   onDeposit: (coin: PortfolioCoin, chain: PortfolioChain) => void;
   onWithdraw: (coin: PortfolioCoin, chain: PortfolioChain) => void;
+  refreshKey?: number;
 }
 
-function CoinPanel({ chain, onCreateWallet, creating, onDeposit, onWithdraw }: CoinPanelProps) {
+function CoinPanel({ chain, onCreateWallet, creating, onDeposit, onWithdraw, refreshKey }: CoinPanelProps) {
   const theme = useTheme();
   const accent = CHAIN_COLOR[chain.mpc_chain_type] ?? CHAIN_COLOR.EVM;
   const isActive = chain.wallet?.status === 'active';
@@ -708,7 +750,7 @@ function CoinPanel({ chain, onCreateWallet, creating, onDeposit, onWithdraw }: C
       for (const b of (res.data.data ?? [])) map[b.symbol] = b;
       setCoins(prev => prev.map(c => map[c.symbol] ? { ...c, ...map[c.symbol] } : c));
     }).finally(() => setBalanceLoading(false));
-  }, [chain]);
+  }, [chain, refreshKey]);
 
   return (
     <Card variant="outlined" sx={{ borderRadius: 2.5, height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -960,6 +1002,11 @@ export default function WalletPage() {
   const [depositState, setDepositState] = useState<{ coin: PortfolioCoin; chain: PortfolioChain } | null>(null);
   const [withdrawState, setWithdrawState] = useState<{ coin: PortfolioCoin; chain: PortfolioChain } | null>(null);
   const [snack, setSnack] = useState<{ open: boolean; msg: string; ok: boolean }>({ open: false, msg: '', ok: true });
+  const [refreshKeys, setRefreshKeys] = useState<Record<string, number>>({});
+
+  const handleWithdrawSuccess = useCallback((chainId: string) => {
+    setRefreshKeys(prev => ({ ...prev, [chainId]: (prev[chainId] ?? 0) + 1 }));
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -1095,6 +1142,7 @@ export default function WalletPage() {
                 creating={creating === selectedChain.mpc_chain_type}
                 onDeposit={(coin, ch) => setDepositState({ coin, chain: ch })}
                 onWithdraw={(coin, ch) => setWithdrawState({ coin, chain: ch })}
+                refreshKey={refreshKeys[selectedChain.chain_id] ?? 0}
               />
             )}
           </Box>
@@ -1129,6 +1177,7 @@ export default function WalletPage() {
         onClose={() => setWithdrawState(null)}
         coin={withdrawState?.coin ?? null}
         chain={withdrawState?.chain ?? null}
+        onSuccess={handleWithdrawSuccess}
       />
 
       <Snackbar open={snack.open} autoHideDuration={3500}

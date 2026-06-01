@@ -356,7 +356,7 @@ export const walletAPI = {
         chain_id: string;
         tx_hash?: string;
       };
-    }>('/wallet/withdraw', req),
+    }>('/wallet/withdraw', req, { _skipAuthRedirect: true } as any),
 
   // Poll the status of a withdrawal signing session.
   withdrawStatus: (sessionId: string) =>
