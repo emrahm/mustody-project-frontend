@@ -14,6 +14,7 @@ import {
 } from '@mui/icons-material';
 import DashboardLayout from '@/components/DashboardLayout';
 import { walletAPI, PortfolioChain, PortfolioCoin } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 // ─── Icon CDN ─────────────────────────────────────────────────────────────────
 
@@ -249,8 +250,9 @@ interface WithdrawDialogProps {
 function WithdrawDialog({ open, onClose, coin, chain, onSuccess }: WithdrawDialogProps) {
   const theme = useTheme();
   const accent = CHAIN_COLOR[chain?.mpc_chain_type ?? 'EVM'];
+  const { user } = useAuth();
 
-  const [step, setStep] = useState<WithdrawStep>('form');
+  const [step, setStep] = useState<WithdrawStep>(() => user?.two_factor_enabled ? 'form' : 'setup_2fa');
   const [toAddress, setToAddress] = useState('');
   const [amount, setAmount] = useState('');
   const [memo, setMemo] = useState('');
@@ -266,7 +268,7 @@ function WithdrawDialog({ open, onClose, coin, chain, onSuccess }: WithdrawDialo
   // Reset state when dialog opens
   useEffect(() => {
     if (open) {
-      setStep('form');
+      setStep(user?.two_factor_enabled ? 'form' : 'setup_2fa');
       setToAddress('');
       setAmount('');
       setMemo('');
@@ -279,7 +281,7 @@ function WithdrawDialog({ open, onClose, coin, chain, onSuccess }: WithdrawDialo
       setTwoFAError('');
       setFailedAttempts(0);
     }
-  }, [open]);
+  }, [open, user?.two_factor_enabled]);
 
   const balance = parseFloat(coin?.balance ?? '0');
   const amountNum = parseFloat(amount || '0');

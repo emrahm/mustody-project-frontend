@@ -30,9 +30,11 @@ import {
 import DashboardLayout from '@/components/DashboardLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { authAPI } from '@/lib/api';
+import { useLocation } from 'wouter';
 
 export default function AccountSettings() {
   const { user } = useAuth();
+  const [, setLocation] = useLocation();
   const [loading, setLoading] = useState(false);
   const [settings, setSettings] = useState({
     two_factor_enabled: false,
@@ -100,10 +102,9 @@ export default function AccountSettings() {
     setLoading(true);
     try {
       await authAPI.verify2FA(verificationCode);
-      setSettings({ ...settings, two_factor_enabled: true });
-      setTwoFADialog(false);
-      setVerificationCode('');
-      alert('2FA enabled successfully');
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('user_data');
+      setLocation('/login');
     } catch (error) {
       console.error('Failed to verify 2FA:', error);
       alert('Invalid verification code');
