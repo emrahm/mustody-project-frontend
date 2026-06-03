@@ -1,99 +1,65 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
-  Box,
-  Grid,
-  Card,
-  CardContent,
-  Typography,
-  Button,
-  Avatar,
-  Chip,
-  LinearProgress,
-  IconButton,
-  alpha,
-  useTheme,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemAvatar,
-  CircularProgress,
+  Box, Grid, Card, CardContent, Typography, Button, Avatar, Chip,
+  LinearProgress, IconButton, alpha, useTheme, List, ListItem,
+  ListItemText, ListItemAvatar, CircularProgress, Alert,
 } from '@mui/material';
 import TenantRequestDialog from '@/components/TenantRequestDialog';
 import {
-  TrendingUp,
-  Security,
-  People,
-  Key,
-  Warning,
-  CheckCircle,
-  MoreVert,
-  ArrowUpward,
-  ArrowDownward,
-  AccountBalanceWallet,
-  Business,
-  Notifications,
-  SwapHoriz,
-  Person,
-  VerifiedUser,
-  Shield,
-  Smartphone,
+  Security, Key, AccountBalanceWallet, Business, Notifications,
+  Person, VerifiedUser, Shield, Smartphone, People, CheckCircle,
+  ConfirmationNumber, NotificationsNone, SupportAgent,
 } from '@mui/icons-material';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useAuth } from '@/contexts/AuthContext';
-import { useNotifications } from '@/contexts/NotificationContext';
 import { tenantAPI, api } from '@/lib/api';
 import { Link } from 'wouter';
 
-const StatCard = ({ title, value, change, icon, color = 'primary' }: any) => {
+interface DashboardStats {
+  totalWallets: number;
+  activeChains: string[];
+  totalTickets: number;
+  openTickets: number;
+  unreadNotifs: number;
+  kycStatus: string;
+  twoFactorEnabled: boolean;
+  securityScore: number;
+}
+
+interface Activity {
+  id: string;
+  title: string;
+  description: string;
+  type: string;
+  timestamp: string;
+  is_read: boolean;
+}
+
+const NOTIF_TYPE_COLOR: Record<string, 'success' | 'warning' | 'error' | 'info'> = {
+  success: 'success',
+  warning: 'warning',
+  error: 'error',
+  info: 'info',
+};
+
+const StatCard = ({ title, value, icon, color = 'primary', subtitle }: {
+  title: string; value: string | number; icon: React.ReactNode;
+  color?: string; subtitle?: string;
+}) => {
   const theme = useTheme();
-  const isPositive = change > 0;
-  
+  const c = color as keyof typeof theme.palette;
+  const main = (theme.palette[c] as any)?.main ?? theme.palette.primary.main;
   return (
     <Card sx={{ height: '100%' }}>
       <CardContent>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-          <Box
-            sx={{
-              p: 1,
-              borderRadius: 2,
-              bgcolor: alpha(theme.palette[color].main, 0.1),
-              color: theme.palette[color].main,
-            }}
-          >
+          <Box sx={{ p: 1, borderRadius: 2, bgcolor: alpha(main, 0.1), color: main }}>
             {icon}
           </Box>
-          <IconButton size="small">
-            <MoreVert />
-          </IconButton>
         </Box>
-        
-        <Typography variant="h4" fontWeight="700" gutterBottom>
-          {value}
-        </Typography>
-        
-        <Typography variant="body2" color="text.secondary" gutterBottom>
-          {title}
-        </Typography>
-        
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          {isPositive ? (
-            <ArrowUpward sx={{ fontSize: 16, color: 'success.main' }} />
-          ) : (
-            <ArrowDownward sx={{ fontSize: 16, color: 'error.main' }} />
-          )}
-          <Typography
-            variant="caption"
-            sx={{
-              color: isPositive ? 'success.main' : 'error.main',
-              fontWeight: 600,
-            }}
-          >
-            {Math.abs(change)}%
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            vs last month
-          </Typography>
-        </Box>
+        <Typography variant="h4" fontWeight={700} gutterBottom>{value}</Typography>
+        <Typography variant="body2" color="text.secondary">{title}</Typography>
+        {subtitle && <Typography variant="caption" color="text.disabled">{subtitle}</Typography>}
       </CardContent>
     </Card>
   );
@@ -102,45 +68,23 @@ const StatCard = ({ title, value, change, icon, color = 'primary' }: any) => {
 export default function DashboardContent() {
   const theme = useTheme();
   const { user, hasRole, hasGlobalRole } = useAuth();
-  const { notifications } = useNotifications();
-  const [dashboardStats, setDashboardStats] = useState(null);
-  const [recentActivities, setRecentActivities] = useState([]);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [activities, setActivities] = useState<Activity[]>([]);
   const [tenantDialogOpen, setTenantDialogOpen] = useState(false);
-  const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        setLoading(true);
-        const [statsResponse, activitiesResponse, profileResponse] = await Promise.all([
-          tenantAPI.getDashboardStats(),
-          tenantAPI.getRecentActivities(),
-          api.get('/profile').catch(() => ({ data: null }))
-        ]);
-        
-        setDashboardStats(statsResponse.data.stats);
-        setRecentActivities(activitiesResponse.data.activities);
-        setUserProfile(profileResponse.data);
-      } catch (error) {
-        console.error('Failed to fetch dashboard data:', error);
-        // Fallback to default data
-        setDashboardStats({
-          totalWallets: 0,
-          totalTransactions: 0,
-          totalVolume: "0.00",
-          activeChains: ["Ethereum", "Cosmos"],
-          securityScore: 95,
-          lastActivity: new Date().toISOString()
-        });
-        setRecentActivities([]);
-        setUserProfile(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchDashboardData();
+    Promise.all([
+      tenantAPI.getDashboardStats(),
+      tenantAPI.getRecentActivities(),
+    ])
+      .then(([statsRes, activitiesRes]) => {
+        setStats(statsRes.data.stats);
+        setActivities(activitiesRes.data.activities ?? []);
+      })
+      .catch(() => setError('Failed to load dashboard data'))
+      .finally(() => setLoading(false));
   }, []);
 
   if (loading) {
@@ -153,258 +97,197 @@ export default function DashboardContent() {
     );
   }
 
-  // Recent notifications for activities - use backend data if available, fallback to notifications
-  const displayActivities = recentActivities.length > 0 
-    ? recentActivities.map(activity => ({
-        id: activity.id,
-        title: activity.title,
-        description: activity.description,
-        time: new Date(activity.timestamp).toLocaleTimeString(),
-        type: activity.type,
-        isRead: true
-      }))
-    : notifications.slice(0, 5).map(notification => ({
-        id: notification.id,
-        title: notification.title,
-        description: notification.message,
-        time: new Date(notification.created_at).toLocaleTimeString(),
-        type: notification.type,
-        isRead: notification.is_read
-      }));
+  const kycVerified = stats?.kycStatus === 'verified';
+  const twoFAEnabled = stats?.twoFactorEnabled ?? false;
+  const securityScore = stats?.securityScore ?? 0;
 
-  // Role-based quick actions
-  const getQuickActions = () => {
-    const actions = [];
-    
-    // Common actions for all users
-    actions.push(
-      { title: 'Profile Settings', icon: <Person />, path: '/profile', color: 'primary' },
-      { title: 'Account Settings', icon: <Security />, path: '/settings', color: 'warning' }
-    );
+  const quickActions = (() => {
+    const actions: { title: string; icon: React.ReactNode; path?: string; onClick?: () => void; color: string }[] = [
+      { title: 'Profile', icon: <Person />, path: '/profile', color: 'primary' },
+      { title: 'Account Settings', icon: <Security />, path: '/settings', color: 'warning' },
+    ];
 
-    // KYC and 2FA quick actions based on status
-    const kycStatus = userProfile?.kyc_status || 'not_started';
-    const twoFAEnabled = userProfile?.two_factor_enabled || false;
+    if (!kycVerified)
+      actions.push({ title: 'Complete KYC', icon: <VerifiedUser />, path: '/profile', color: 'error' });
+    if (!twoFAEnabled)
+      actions.push({ title: 'Enable 2FA', icon: <Smartphone />, path: '/settings', color: 'warning' });
 
-    if (kycStatus !== 'verified') {
-      actions.push(
-        { title: 'Complete KYC', icon: <VerifiedUser />, path: '/profile', color: 'error' }
-      );
-    }
-
-    if (!twoFAEnabled) {
-      actions.push(
-        { title: 'Enable 2FA', icon: <Smartphone />, path: '/settings', color: 'warning' }
-      );
-    }
-    
-    // Use hasGlobalRole for system-wide admin actions
     if (hasGlobalRole('admin') || hasGlobalRole('owner')) {
       actions.push(
         { title: 'Manage Users', icon: <People />, path: '/users', color: 'primary' },
         { title: 'KYC Management', icon: <VerifiedUser />, path: '/admin/kyc', color: 'info' },
-        { title: 'API Keys', icon: <Key />, path: '/api-keys', color: 'info' }
+        { title: 'API Keys', icon: <Key />, path: '/api-keys', color: 'info' },
       );
     }
-    
     if (hasRole('tenant_admin')) {
       actions.push(
-        { title: 'Wallet Management', icon: <AccountBalanceWallet />, path: '/wallet', color: 'success' },
-        { title: 'Team Settings', icon: <People />, path: '/team', color: 'primary' },
-        { title: 'API Keys', icon: <Key />, path: '/api-keys', color: 'info' }
+        { title: 'Wallets', icon: <AccountBalanceWallet />, path: '/wallet', color: 'success' },
+        { title: 'Team', icon: <People />, path: '/team', color: 'primary' },
+        { title: 'API Keys', icon: <Key />, path: '/api-keys', color: 'info' },
       );
     }
-    
-    // For regular users - encourage to become tenant
     if (!hasRole('admin') && !hasRole('owner') && !hasRole('tenant_admin')) {
       actions.push(
-        { title: 'Become Our Tenant', icon: <Business />, onClick: () => setTenantDialogOpen(true), color: 'primary' },
-        { title: 'View Wallets', icon: <AccountBalanceWallet />, path: '/wallet', color: 'success' }
+        { title: 'Become a Tenant', icon: <Business />, onClick: () => setTenantDialogOpen(true), color: 'primary' },
+        { title: 'View Wallets', icon: <AccountBalanceWallet />, path: '/wallet', color: 'success' },
       );
     }
-    
     return actions;
-  };
-
-  const quickActions = getQuickActions();
-
-  const stats = [
-    { 
-      title: 'Total Wallets', 
-      value: dashboardStats?.totalWallets?.toString() || '0', 
-      change: 12, 
-      icon: <AccountBalanceWallet />, 
-      color: 'primary' 
-    },
-    { 
-      title: 'Total Transactions', 
-      value: dashboardStats?.totalTransactions?.toString() || '0', 
-      change: 8, 
-      icon: <SwapHoriz />, 
-      color: 'success' 
-    },
-    { 
-      title: 'Security Score', 
-      value: `${dashboardStats?.securityScore || 0}%`, 
-      change: 2, 
-      icon: <Security />, 
-      color: 'warning' 
-    },
-    { 
-      title: 'Total Volume', 
-      value: `$${dashboardStats?.totalVolume || '0.00'}`, 
-      change: 15, 
-      icon: <TrendingUp />, 
-      color: 'info' 
-    },
-  ];
+  })();
 
   return (
     <DashboardLayout>
       <Box sx={{ flexGrow: 1, p: 3 }}>
-        <Typography variant="h4" fontWeight="600" gutterBottom>
+        <Typography variant="h4" fontWeight={600} gutterBottom>
           Welcome back, {user?.name}!
         </Typography>
-        
         <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-          Here's what's happening with your custody wallets today.
+          Here's your custody platform overview.
         </Typography>
 
+        {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
+
         <Grid container spacing={3}>
-          {/* Stats Cards */}
-          {stats.map((stat, index) => (
-            <Grid item xs={12} sm={6} lg={3} key={index}>
-              <StatCard {...stat} />
-            </Grid>
-          ))}
+          {/* Stat Cards */}
+          <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+            <StatCard
+              title="Wallets"
+              value={stats?.totalWallets ?? 0}
+              icon={<AccountBalanceWallet />}
+              color="primary"
+              subtitle={stats?.activeChains?.join(', ') || 'No active chains'}
+            />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+            <StatCard
+              title="Support Tickets"
+              value={stats?.totalTickets ?? 0}
+              icon={<SupportAgent />}
+              color="info"
+              subtitle={stats?.openTickets ? `${stats.openTickets} open` : 'All resolved'}
+            />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+            <StatCard
+              title="Unread Notifications"
+              value={stats?.unreadNotifs ?? 0}
+              icon={<NotificationsNone />}
+              color="warning"
+            />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+            <StatCard
+              title="Security Score"
+              value={`${securityScore}%`}
+              icon={<Security />}
+              color={securityScore === 100 ? 'success' : securityScore >= 50 ? 'warning' : 'error'}
+            />
+          </Grid>
 
           {/* Recent Activities */}
-          <Grid item xs={12} lg={6}>
+          <Grid size={{ xs: 12, lg: 6 }}>
             <Card sx={{ height: '100%' }}>
               <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                  <Typography variant="h6">Recent Activities</Typography>
-                  <IconButton size="small">
-                    <MoreVert />
-                  </IconButton>
-                </Box>
-                <List>
-                  {displayActivities.length > 0 ? displayActivities.map((activity) => (
-                    <ListItem key={activity.id} sx={{ px: 0 }}>
+                <Typography variant="h6" gutterBottom>Recent Notifications</Typography>
+                <List disablePadding>
+                  {activities.length > 0 ? activities.map(a => (
+                    <ListItem key={a.id} sx={{ px: 0 }} disableGutters>
                       <ListItemAvatar>
-                        <Avatar sx={{ 
-                          bgcolor: activity.type === 'success' ? 'success.main' : 
-                                  activity.type === 'warning' ? 'warning.main' : 
-                                  activity.type === 'error' ? 'error.main' : 'info.main',
-                          width: 32, 
-                          height: 32 
+                        <Avatar sx={{
+                          bgcolor: alpha(theme.palette[NOTIF_TYPE_COLOR[a.type] ?? 'info'].main, 0.15),
+                          color: theme.palette[NOTIF_TYPE_COLOR[a.type] ?? 'info'].main,
+                          width: 36, height: 36,
                         }}>
-                          <Notifications sx={{ fontSize: 16 }} />
+                          <Notifications sx={{ fontSize: 18 }} />
                         </Avatar>
                       </ListItemAvatar>
                       <ListItemText
-                        primary={activity.title}
-                        secondary={`${activity.description} • ${activity.time}`}
-                        primaryTypographyProps={{ 
-                          variant: 'body2',
-                          fontWeight: activity.isRead ? 'normal' : 'bold'
-                        }}
+                        primary={a.title}
+                        secondary={`${a.description} · ${new Date(a.timestamp).toLocaleString()}`}
+                        primaryTypographyProps={{ variant: 'body2', fontWeight: a.is_read ? 'normal' : 700 }}
                         secondaryTypographyProps={{ variant: 'caption' }}
                       />
                     </ListItem>
                   )) : (
-                    <ListItem sx={{ px: 0 }}>
+                    <ListItem sx={{ px: 0 }} disableGutters>
                       <ListItemText
-                        primary="No recent activities"
-                        secondary="Your activities will appear here"
+                        primary="No notifications yet"
                         primaryTypographyProps={{ variant: 'body2', color: 'text.secondary' }}
                       />
                     </ListItem>
                   )}
                 </List>
+                <Box mt={1}>
+                  <Link href="/notifications">
+                    <Button size="small" variant="text">View all notifications →</Button>
+                  </Link>
+                </Box>
               </CardContent>
             </Card>
           </Grid>
 
-          {/* Security Status Widget */}
-          <Grid item xs={12} lg={6}>
+          {/* Security Status */}
+          <Grid size={{ xs: 12, lg: 6 }}>
             <Card sx={{ height: '100%' }}>
               <CardContent>
                 <Typography variant="h6" gutterBottom>Security Status</Typography>
-                
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  {/* KYC Status */}
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <VerifiedUser sx={{ color: userProfile?.kyc_status === 'verified' ? 'success.main' : 'warning.main' }} />
+                      <VerifiedUser sx={{ color: kycVerified ? 'success.main' : 'warning.main' }} />
                       <Typography variant="body1">KYC Verification</Typography>
                     </Box>
                     <Chip
-                      label={userProfile?.kyc_status === 'verified' ? 'Verified' : userProfile?.kyc_status?.toUpperCase() || 'PENDING'}
-                      color={userProfile?.kyc_status === 'verified' ? 'success' : 'warning'}
+                      label={stats?.kycStatus?.replace('_', ' ').toUpperCase() ?? 'UNKNOWN'}
+                      color={kycVerified ? 'success' : 'warning'}
                       size="small"
                     />
                   </Box>
-                  
-                  {/* 2FA Status */}
+
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Shield sx={{ color: userProfile?.two_factor_enabled ? 'success.main' : 'error.main' }} />
+                      <Shield sx={{ color: twoFAEnabled ? 'success.main' : 'error.main' }} />
                       <Typography variant="body1">Two-Factor Auth</Typography>
                     </Box>
                     <Chip
-                      label={userProfile?.two_factor_enabled ? 'Enabled' : 'Disabled'}
-                      color={userProfile?.two_factor_enabled ? 'success' : 'error'}
+                      label={twoFAEnabled ? 'Enabled' : 'Disabled'}
+                      color={twoFAEnabled ? 'success' : 'error'}
                       size="small"
                     />
                   </Box>
-                  
-                  {/* Overall Security Score */}
-                  <Box sx={{ mt: 2 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-                      <Typography variant="body2" color="text.secondary">Security Score</Typography>
-                      <Typography variant="body2" fontWeight="bold">
-                        {((userProfile?.kyc_status === 'verified' ? 50 : 0) + (userProfile?.two_factor_enabled ? 50 : 0))}%
-                      </Typography>
+
+                  <Box sx={{ mt: 1 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                      <Typography variant="body2" color="text.secondary">Overall Security</Typography>
+                      <Typography variant="body2" fontWeight={700}>{securityScore}%</Typography>
                     </Box>
                     <LinearProgress
                       variant="determinate"
-                      value={(userProfile?.kyc_status === 'verified' ? 50 : 0) + (userProfile?.two_factor_enabled ? 50 : 0)}
+                      value={securityScore}
                       sx={{
-                        height: 8,
-                        borderRadius: 4,
-                        backgroundColor: alpha(theme.palette.grey[500], 0.2),
+                        height: 8, borderRadius: 4,
+                        bgcolor: alpha(theme.palette.grey[500], 0.2),
                         '& .MuiLinearProgress-bar': {
                           borderRadius: 4,
-                          backgroundColor: theme.palette.success.main,
+                          bgcolor: securityScore === 100 ? 'success.main' : securityScore >= 50 ? 'warning.main' : 'error.main',
                         },
                       }}
                     />
                   </Box>
-                  
-                  {/* Action Buttons */}
-                  <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
-                    {userProfile?.kyc_status !== 'verified' && (
+
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
+                    {!kycVerified && (
                       <Link href="/profile">
-                        <Button size="small" variant="outlined" color="warning">
-                          Complete KYC
-                        </Button>
+                        <Button size="small" variant="outlined" color="warning">Complete KYC</Button>
                       </Link>
                     )}
-                    {!userProfile?.two_factor_enabled && (
+                    {!twoFAEnabled && (
                       <Link href="/settings">
-                        <Button size="small" variant="outlined" color="error">
-                          Enable 2FA
-                        </Button>
+                        <Button size="small" variant="outlined" color="error">Enable 2FA</Button>
                       </Link>
                     )}
-                    {userProfile?.kyc_status === 'verified' && userProfile?.two_factor_enabled && (
-                      <Chip
-                        label="Fully Secured"
-                        color="success"
-                        icon={<CheckCircle />}
-                        sx={{ alignSelf: 'flex-start' }}
-                      />
+                    {kycVerified && twoFAEnabled && (
+                      <Chip label="Fully Secured" color="success" icon={<CheckCircle />} />
                     )}
                   </Box>
                 </Box>
@@ -413,13 +296,13 @@ export default function DashboardContent() {
           </Grid>
 
           {/* Quick Actions */}
-          <Grid item xs={12} lg={6}>
-            <Card sx={{ height: '100%' }}>
+          <Grid size={12}>
+            <Card>
               <CardContent>
                 <Typography variant="h6" gutterBottom>Quick Actions</Typography>
                 <Grid container spacing={2}>
-                  {quickActions.map((action, index) => (
-                    <Grid item xs={12} sm={6} md={4} key={index}>
+                  {quickActions.map((action, i) => (
+                    <Grid size={{ xs: 6, sm: 4, md: 3, lg: 2 }} key={i}>
                       {action.path ? (
                         <Link href={action.path}>
                           <Button
@@ -430,10 +313,7 @@ export default function DashboardContent() {
                               py: 1.5,
                               borderColor: `${action.color}.main`,
                               color: `${action.color}.main`,
-                              '&:hover': {
-                                borderColor: `${action.color}.dark`,
-                                backgroundColor: alpha(theme.palette[action.color].main, 0.04),
-                              }
+                              '&:hover': { bgcolor: alpha((theme.palette[action.color as keyof typeof theme.palette] as any)?.main ?? '#000', 0.04) },
                             }}
                           >
                             {action.title}
@@ -449,10 +329,7 @@ export default function DashboardContent() {
                             py: 1.5,
                             borderColor: `${action.color}.main`,
                             color: `${action.color}.main`,
-                            '&:hover': {
-                              borderColor: `${action.color}.dark`,
-                              backgroundColor: alpha(theme.palette[action.color].main, 0.04),
-                            }
+                            '&:hover': { bgcolor: alpha((theme.palette[action.color as keyof typeof theme.palette] as any)?.main ?? '#000', 0.04) },
                           }}
                         >
                           {action.title}
@@ -466,11 +343,8 @@ export default function DashboardContent() {
           </Grid>
         </Grid>
       </Box>
-      
-      <TenantRequestDialog 
-        open={tenantDialogOpen} 
-        onClose={() => setTenantDialogOpen(false)} 
-      />
+
+      <TenantRequestDialog open={tenantDialogOpen} onClose={() => setTenantDialogOpen(false)} />
     </DashboardLayout>
   );
 }
