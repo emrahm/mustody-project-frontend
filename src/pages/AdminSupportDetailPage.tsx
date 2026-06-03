@@ -1,18 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   Alert, Avatar, Box, Button, Chip, CircularProgress, Divider,
-  FormControl, IconButton, InputLabel, MenuItem, Paper, Select,
+  FormControl, IconButton, InputLabel, MenuItem, Paper, Popover, Select,
   Stack, TextField, Tooltip, Typography,
 } from '@mui/material';
 import {
-  AdminPanelSettings, ArrowBack, Lock, LockOpen, Send, VisibilityOff,
+  AdminPanelSettings, ArrowBack, EmojiEmotions, Lock, LockOpen, Send, VisibilityOff,
   FiberManualRecord,
 } from '@mui/icons-material';
+import EmojiPicker, { EmojiClickData, Theme } from 'emoji-picker-react';
 import { useLocation, useParams } from 'wouter';
 import DashboardLayout from '@/components/DashboardLayout';
 import {
   supportAPI, SupportMessage, SupportTicket, TicketStatus,
 } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 const STATUS_COLOR: Record<string, 'default' | 'info' | 'success' | 'error' | 'warning'> = {
   open: 'info',
@@ -33,6 +35,7 @@ const ALL_STATUSES: TicketStatus[] = ['open', 'in_progress', 'resolved', 'closed
 export default function AdminSupportDetailPage() {
   const params = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
 
   const [ticket, setTicket] = useState<SupportTicket | null>(null);
   const [messages, setMessages] = useState<SupportMessage[]>([]);
@@ -45,6 +48,7 @@ export default function AdminSupportDetailPage() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const knownIds = useRef<Set<string>>(new Set());
+  const [emojiAnchor, setEmojiAnchor] = useState<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     if (!params?.id) return;
@@ -72,6 +76,7 @@ export default function AdminSupportDetailPage() {
     es.onmessage = (e) => {
       try {
         const msg: SupportMessage = JSON.parse(e.data);
+        if (msg.sender_id === user?.id) return;
         if (!knownIds.current.has(msg.id)) {
           knownIds.current.add(msg.id);
           setMessages(prev => [...prev, msg]);
@@ -83,17 +88,18 @@ export default function AdminSupportDetailPage() {
       es.close();
       setSseConnected(false);
     };
-  }, [params?.id]);
+  }, [params?.id, user?.id]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   const handleReply = async () => {
-    if (!ticket || !replyBody.trim()) return;
+    if (!ticket || !replyBody.trim() || replying) return;
     setReplying(true);
     try {
       const res = await supportAPI.adminReply(ticket.id, replyBody, isInternal);
+      knownIds.current.add(res.data.id);
       setMessages(prev => [...prev, res.data]);
       setReplyBody('');
       setIsInternal(false);
@@ -309,6 +315,9 @@ export default function AdminSupportDetailPage() {
                 </Alert>
               ) : (
                 <Stack direction="row" gap={1}>
+                  <IconButton size="small" onClick={e => setEmojiAnchor(e.currentTarget)}>
+                    <EmojiEmotions fontSize="small" />
+                  </IconButton>
                   <TextField
                     fullWidth
                     multiline
@@ -338,6 +347,21 @@ export default function AdminSupportDetailPage() {
                   </Button>
                 </Stack>
               )}
+              <Popover
+                open={Boolean(emojiAnchor)}
+                anchorEl={emojiAnchor}
+                onClose={() => setEmojiAnchor(null)}
+                anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
+                transformOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+              >
+                <EmojiPicker
+                  theme={Theme.AUTO}
+                  onEmojiClick={(e: EmojiClickData) => {
+                    setReplyBody(prev => prev + e.emoji);
+                    setEmojiAnchor(null);
+                  }}
+                />
+              </Popover>
             </Box>
           </Paper>
         )}

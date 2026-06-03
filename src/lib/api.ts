@@ -645,6 +645,9 @@ export const supportAPI = {
   replyToTicket: (id: string, body: string) =>
     api.post<SupportMessage>(`/support/tickets/${id}/messages`, { body }),
 
+  resolveTicket: (id: string) =>
+    api.patch(`/support/tickets/${id}/resolve`),
+
   // Admin
   adminListTickets: (params?: { status?: string; priority?: string; search?: string; page?: number; limit?: number }) =>
     api.get<TicketListResponse>('/admin/support/tickets', { params }),

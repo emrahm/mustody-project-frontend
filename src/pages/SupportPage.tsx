@@ -3,11 +3,12 @@ import {
   Box, Button, Chip, CircularProgress, Dialog, DialogActions,
   DialogContent, DialogTitle, Divider, FormControl, InputLabel,
   MenuItem, Paper, Select, Stack, TextField, Typography, Avatar,
-  Alert, Tooltip,
+  Alert, Tooltip, IconButton, Popover,
 } from '@mui/material';
 import {
-  Add, SupportAgent, Send, ConfirmationNumber, AccessTime, FiberManualRecord,
+  Add, SupportAgent, Send, ConfirmationNumber, AccessTime, FiberManualRecord, EmojiEmotions,
 } from '@mui/icons-material';
+import EmojiPicker, { EmojiClickData, Theme } from 'emoji-picker-react';
 import DashboardLayout from '@/components/DashboardLayout';
 import {
   supportAPI, SupportTicket, SupportMessage, TicketPriority,
@@ -42,6 +43,8 @@ export default function SupportPage() {
   const [error, setError] = useState('');
   const knownIds = useRef<Set<string>>(new Set());
   const [sseConnected, setSseConnected] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [emojiAnchor, setEmojiAnchor] = useState<HTMLButtonElement | null>(null);
 
   const [form, setForm] = useState({
     subject: '',
@@ -89,6 +92,8 @@ export default function SupportPage() {
     es.onmessage = (e) => {
       try {
         const msg: SupportMessage = JSON.parse(e.data);
+        // Kendi mesajlarımızı SSE'den alma — handleReply zaten API response'undan ekliyor
+        if (msg.sender_id === user?.id) return;
         if (!knownIds.current.has(msg.id)) {
           knownIds.current.add(msg.id);
           setMessages(prev => [...prev, msg]);
@@ -96,13 +101,18 @@ export default function SupportPage() {
       } catch { /* ignore */ }
     };
     return () => { es.close(); setSseConnected(false); };
-  }, [selectedTicket?.id]);
+  }, [selectedTicket?.id, user?.id]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   const handleReply = async () => {
-    if (!selectedTicket || !replyBody.trim()) return;
+    if (!selectedTicket || !replyBody.trim() || replying) return;
     setReplying(true);
     try {
       const res = await supportAPI.replyToTicket(selectedTicket.id, replyBody);
+      // ID'yi SSE'den önce kaydet, sonra API response'u (sender bilgisiyle) ekle
       knownIds.current.add(res.data.id);
       setMessages(prev => [...prev, res.data]);
       setReplyBody('');
@@ -215,7 +225,7 @@ export default function SupportPage() {
           </Paper>
 
           {/* Thread */}
-          <Paper variant="outlined" sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 400 }}>
+          <Paper variant="outlined" sx={{ flex: 1, display: 'flex', flexDirection: 'column', height: 'calc(100vh - 200px)', minHeight: 400 }}>
             {!selectedTicket ? (
               <Box flex={1} display="flex" alignItems="center" justifyContent="center" p={4}>
                 <Box textAlign="center">
@@ -258,6 +268,24 @@ export default function SupportPage() {
                         )}
                       </Stack>
                     </Box>
+                    {!isClosed(selectedTicket) && (
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="success"
+                        onClick={async () => {
+                          try {
+                            await supportAPI.resolveTicket(selectedTicket.id);
+                            setSelectedTicket(t => t ? { ...t, status: 'resolved' } : t);
+                            setTickets(ts => ts.map(t => t.id === selectedTicket.id ? { ...t, status: 'resolved' } : t));
+                          } catch {
+                            setError('Failed to resolve ticket');
+                          }
+                        }}
+                      >
+                        Mark as Resolved
+                      </Button>
+                    )}
                   </Stack>
                 </Box>
 
@@ -302,12 +330,16 @@ export default function SupportPage() {
                       </Box>
                     );
                   })}
+                  <div ref={messagesEndRef} />
                 </Box>
 
                 {/* Reply box */}
                 {!isClosed(selectedTicket) ? (
                   <Box p={2} borderTop="1px solid" borderColor="divider">
                     <Stack direction="row" gap={1}>
+                      <IconButton size="small" onClick={e => setEmojiAnchor(e.currentTarget)}>
+                        <EmojiEmotions fontSize="small" />
+                      </IconButton>
                       <TextField
                         fullWidth
                         multiline
@@ -333,6 +365,21 @@ export default function SupportPage() {
                     <Typography variant="caption" color="text.disabled" mt={0.5} display="block">
                       Press Enter to send, Shift+Enter for new line
                     </Typography>
+                    <Popover
+                      open={Boolean(emojiAnchor)}
+                      anchorEl={emojiAnchor}
+                      onClose={() => setEmojiAnchor(null)}
+                      anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
+                      transformOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+                    >
+                      <EmojiPicker
+                        theme={Theme.AUTO}
+                        onEmojiClick={(e: EmojiClickData) => {
+                          setReplyBody(prev => prev + e.emoji);
+                          setEmojiAnchor(null);
+                        }}
+                      />
+                    </Popover>
                   </Box>
                 ) : (
                   <Box p={2} borderTop="1px solid" borderColor="divider">
