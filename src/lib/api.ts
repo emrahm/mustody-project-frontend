@@ -586,4 +586,77 @@ export const coinAPI = {
     api.delete<{ success: boolean }>(`/wallet/coins/${coinId}`, { params: { contract_id: contractId } }),
 };
 
+// ─── Support Ticket API ───────────────────────────────────────────────────────
+
+export type TicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
+export type TicketPriority = 'low' | 'medium' | 'high' | 'urgent';
+
+export interface SupportTicket {
+  id: string;
+  ticket_number: string;
+  user_id: string;
+  subject: string;
+  status: TicketStatus;
+  priority: TicketPriority;
+  category?: string;
+  message_count?: number;
+  external_ref_id?: string;
+  external_ref_url?: string;
+  resolved_at?: string;
+  closed_at?: string;
+  created_at: string;
+  updated_at: string;
+  user?: { id: string; name: string; email: string };
+}
+
+export interface SupportMessage {
+  id: string;
+  ticket_id: string;
+  sender_id: string;
+  body: string;
+  is_internal: boolean;
+  created_at: string;
+  sender?: { id: string; name: string; email: string; avatar_url?: string };
+}
+
+export interface TicketListResponse {
+  tickets: SupportTicket[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface TicketDetailResponse {
+  ticket: SupportTicket;
+  messages: SupportMessage[];
+}
+
+export const supportAPI = {
+  // User
+  createTicket: (data: { subject: string; body: string; category?: string; priority?: TicketPriority }) =>
+    api.post<SupportTicket>('/support/tickets', data),
+
+  listMyTickets: (params?: { status?: string; page?: number; limit?: number }) =>
+    api.get<TicketListResponse>('/support/tickets', { params }),
+
+  getMyTicket: (id: string) =>
+    api.get<TicketDetailResponse>(`/support/tickets/${id}`),
+
+  replyToTicket: (id: string, body: string) =>
+    api.post<SupportMessage>(`/support/tickets/${id}/messages`, { body }),
+
+  // Admin
+  adminListTickets: (params?: { status?: string; priority?: string; search?: string; page?: number; limit?: number }) =>
+    api.get<TicketListResponse>('/admin/support/tickets', { params }),
+
+  adminGetTicket: (id: string) =>
+    api.get<TicketDetailResponse>(`/admin/support/tickets/${id}`),
+
+  adminReply: (id: string, body: string, is_internal = false) =>
+    api.post<SupportMessage>(`/admin/support/tickets/${id}/messages`, { body, is_internal }),
+
+  adminUpdateStatus: (id: string, status: TicketStatus) =>
+    api.patch(`/admin/support/tickets/${id}/status`, { status }),
+};
+
 export default api;

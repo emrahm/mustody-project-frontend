@@ -50,6 +50,8 @@ import EmailQueueMUI from "./pages/EmailQueueMUI";
 import MpcClustersPage from "./pages/MpcClustersPage";
 import ContractTemplatesPage from "./pages/ContractTemplatesPage";
 import DeployedContractsPage from "./pages/DeployedContractsPage";
+import SupportPage from "./pages/SupportPage";
+import AdminSupportPage from "./pages/AdminSupportPage";
 
 function Router() {
   return (
@@ -91,6 +93,8 @@ function Router() {
       <Route path="/tenant/mpc-clusters" component={() => <ProtectedRoute><MpcClustersPage /></ProtectedRoute>} />
       <Route path="/contract-templates" component={() => <ProtectedRoute><ContractTemplatesPage /></ProtectedRoute>} />
       <Route path="/deployed-contracts" component={() => <ProtectedRoute><DeployedContractsPage /></ProtectedRoute>} />
+      <Route path="/support" component={() => <ProtectedRoute><SupportPage /></ProtectedRoute>} />
+      <Route path="/admin/support" component={() => <ProtectedRoute><AdminSupportPage /></ProtectedRoute>} />
       <Route path="/audit-logs-old" component={AuditLogs} />
       <Route component={NotFound} />
     </Switch>
