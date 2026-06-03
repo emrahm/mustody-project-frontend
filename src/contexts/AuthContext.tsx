@@ -138,6 +138,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         { id: '9', label: 'MPC Clusters', path: '/admin/mpc-clusters', icon: 'Hub', roles: ['admin', 'owner'], order: 9 },
         { id: '10', label: 'Contract Templates', path: '/contract-templates', icon: 'Description', roles: ['admin', 'owner'], order: 10 },
         { id: '10b', label: 'Deployed Contracts', path: '/deployed-contracts', icon: 'CloudSync', roles: ['admin', 'owner'], order: 11 },
+        { id: '10c', label: 'Support Management', path: '/admin/support', icon: 'Support', roles: ['admin', 'owner'], order: 12 },
       );
     }
     

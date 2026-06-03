@@ -52,6 +52,7 @@ import ContractTemplatesPage from "./pages/ContractTemplatesPage";
 import DeployedContractsPage from "./pages/DeployedContractsPage";
 import SupportPage from "./pages/SupportPage";
 import AdminSupportPage from "./pages/AdminSupportPage";
+import AdminSupportDetailPage from "./pages/AdminSupportDetailPage";
 
 function Router() {
   return (
@@ -94,6 +95,7 @@ function Router() {
       <Route path="/contract-templates" component={() => <ProtectedRoute><ContractTemplatesPage /></ProtectedRoute>} />
       <Route path="/deployed-contracts" component={() => <ProtectedRoute><DeployedContractsPage /></ProtectedRoute>} />
       <Route path="/support" component={() => <ProtectedRoute><SupportPage /></ProtectedRoute>} />
+      <Route path="/admin/support/:id" component={() => <ProtectedRoute><AdminSupportDetailPage /></ProtectedRoute>} />
       <Route path="/admin/support" component={() => <ProtectedRoute><AdminSupportPage /></ProtectedRoute>} />
       <Route path="/audit-logs-old" component={AuditLogs} />
       <Route component={NotFound} />

@@ -657,6 +657,16 @@ export const supportAPI = {
 
   adminUpdateStatus: (id: string, status: TicketStatus) =>
     api.patch(`/admin/support/tickets/${id}/status`, { status }),
+
+  // SSE stream URL — use with EventSource
+  streamUrl: (id: string, isAdmin: boolean): string => {
+    const token = localStorage.getItem('auth_token') ?? '';
+    const base = (import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1');
+    const path = isAdmin
+      ? `/admin/support/tickets/${id}/stream`
+      : `/support/tickets/${id}/stream`;
+    return `${base}${path}?token=${encodeURIComponent(token)}`;
+  },
 };
 
 export default api;

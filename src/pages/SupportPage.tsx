@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Box, Button, Chip, CircularProgress, Dialog, DialogActions,
   DialogContent, DialogTitle, Divider, FormControl, InputLabel,
@@ -6,7 +6,7 @@ import {
   Alert, Tooltip,
 } from '@mui/material';
 import {
-  Add, SupportAgent, Send, ConfirmationNumber, AccessTime,
+  Add, SupportAgent, Send, ConfirmationNumber, AccessTime, FiberManualRecord,
 } from '@mui/icons-material';
 import DashboardLayout from '@/components/DashboardLayout';
 import {
@@ -40,6 +40,8 @@ export default function SupportPage() {
   const [replying, setReplying] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [error, setError] = useState('');
+  const knownIds = useRef<Set<string>>(new Set());
+  const [sseConnected, setSseConnected] = useState(false);
 
   const [form, setForm] = useState({
     subject: '',
@@ -69,11 +71,32 @@ export default function SupportPage() {
     setThreadLoading(true);
     try {
       const res = await supportAPI.getMyTicket(ticket.id);
-      setMessages(res.data.messages ?? []);
+      const msgs = res.data.messages ?? [];
+      setMessages(msgs);
+      knownIds.current = new Set(msgs.map(m => m.id));
     } finally {
       setThreadLoading(false);
     }
   };
+
+  // SSE: real-time new messages for the open ticket
+  useEffect(() => {
+    if (!selectedTicket) return;
+    const url = supportAPI.streamUrl(selectedTicket.id, false);
+    const es = new EventSource(url);
+    es.onopen = () => setSseConnected(true);
+    es.onerror = () => setSseConnected(false);
+    es.onmessage = (e) => {
+      try {
+        const msg: SupportMessage = JSON.parse(e.data);
+        if (!knownIds.current.has(msg.id)) {
+          knownIds.current.add(msg.id);
+          setMessages(prev => [...prev, msg]);
+        }
+      } catch { /* ignore */ }
+    };
+    return () => { es.close(); setSseConnected(false); };
+  }, [selectedTicket?.id]);
 
   const handleReply = async () => {
     if (!selectedTicket || !replyBody.trim()) return;
@@ -209,7 +232,12 @@ export default function SupportPage() {
                 <Box p={2.5} borderBottom="1px solid" borderColor="divider">
                   <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
                     <Box>
-                      <Typography variant="h6" fontWeight={600}>{selectedTicket.subject}</Typography>
+                      <Stack direction="row" alignItems="center" gap={1}>
+                        <Typography variant="h6" fontWeight={600}>{selectedTicket.subject}</Typography>
+                        <Tooltip title={sseConnected ? 'Live updates active' : 'Connecting…'}>
+                          <FiberManualRecord sx={{ fontSize: 10, color: sseConnected ? 'success.main' : 'grey.400' }} />
+                        </Tooltip>
+                      </Stack>
                       <Stack direction="row" gap={1} mt={0.5} flexWrap="wrap">
                         <Chip label={selectedTicket.ticket_number} size="small" variant="outlined" />
                         <Chip
