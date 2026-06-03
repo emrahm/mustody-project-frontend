@@ -103,6 +103,7 @@ export default function SupportPage() {
     setReplying(true);
     try {
       const res = await supportAPI.replyToTicket(selectedTicket.id, replyBody);
+      knownIds.current.add(res.data.id);
       setMessages(prev => [...prev, res.data]);
       setReplyBody('');
     } finally {
