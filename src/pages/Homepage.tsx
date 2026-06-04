@@ -258,8 +258,8 @@ export function Homepage() {
               transition={{ duration: 0.8 }}
               className="inline-flex items-center px-4 py-2 bg-blue-100 dark:bg-blue-500/20 border border-blue-200 dark:border-blue-400/30 text-blue-800 dark:text-blue-300 rounded-full text-sm font-medium mb-8"
             >
-              <Shield className="w-4 h-4 mr-2" />
-              Enterprise MPC Custody • Multi-Chain Infrastructure
+              <Zap className="w-4 h-4 mr-2" />
+              Blockchain-as-a-Service (BaaS) • MPC Custody Infrastructure
             </motion.div>
             
             <motion.h1
@@ -269,11 +269,11 @@ export function Homepage() {
               className="text-6xl md:text-7xl font-bold mb-8 leading-tight"
             >
               <span className="bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
-                Secure Blockchain
+                Full Blockchain Stack,
               </span>
               <br />
               <span className="bg-gradient-to-r from-blue-500 via-cyan-500 to-teal-500 bg-clip-text text-transparent">
-                Custody Wallets
+                Just an API Call Away
               </span>
             </motion.h1>
             
@@ -284,8 +284,9 @@ export function Homepage() {
               className="relative mb-12"
             >
               <p className="text-xl text-gray-600 dark:text-gray-300 max-w-4xl mx-auto leading-relaxed mb-8">
-                <strong>Multi-Party Computation (MPC)</strong> powered custody wallet infrastructure. 
-                Secure, scalable, and compliant digital asset management for enterprises across multiple blockchains.
+                No nodes. No RPC providers. No smart contract development. No private key management. No blockchain engineers needed.
+                <br />
+                <span className="text-blue-600 dark:text-blue-400 font-semibold">Just call our API — we handle everything on the blockchain.</span>
               </p>
               
               {/* Key features highlight */}
@@ -299,18 +300,18 @@ export function Homepage() {
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Multi-Chain</span>
                 </div>
                 <div className="flex items-center space-x-2 bg-white/70 dark:bg-black/30 px-4 py-2 rounded-full border border-gray-200 dark:border-white/10">
-                  <Wallet className="w-4 h-4 text-teal-500" />
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Enterprise Grade</span>
+                  <Zap className="w-4 h-4 text-teal-500" />
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Simple REST API</span>
                 </div>
               </div>
               
-              {/* Animated text carousel */}
+              {/* Animated text */}
               <motion.div
                 className="text-lg text-blue-600 dark:text-blue-400 font-medium"
                 animate={{ opacity: [1, 0.7, 1] }}
                 transition={{ duration: 2, repeat: Infinity }}
               >
-                🔐 No Single Point of Failure • 🌐 Cross-Chain Operations • 🏢 Institutional Compliance
+                🔐 No Private Key Management • 🌐 Cross-Chain Operations • ⚡ API-First Architecture
               </motion.div>
             </motion.div>
             
@@ -347,17 +348,108 @@ export function Homepage() {
         </div>
       </section>
 
+      {/* BaaS Value Proposition Section */}
+      <section className="relative py-24 px-4 sm:px-6 lg:px-8 bg-gray-50/50 dark:bg-black/20">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center px-3 py-1 bg-cyan-100 dark:bg-cyan-500/20 border border-cyan-200 dark:border-cyan-400/30 text-cyan-800 dark:text-cyan-300 rounded-full text-xs font-semibold uppercase tracking-wider mb-4">
+              Blockchain-as-a-Service
+            </div>
+            <h2 className="text-4xl md:text-5xl font-bold mb-6">
+              <span className="bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
+                You Don't Need to Be a
+              </span>
+              <br />
+              <span className="bg-gradient-to-r from-blue-500 via-cyan-500 to-teal-500 bg-clip-text text-transparent">
+                Blockchain Expert
+              </span>
+            </h2>
+            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
+              Traditional blockchain infrastructure requires running nodes, managing RPC providers, deploying smart contracts, and hiring specialists. With Mustody, you skip all of that.
+            </p>
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
+            {/* Left: What you don't need */}
+            <div>
+              <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-8">What you no longer need:</h3>
+              <div className="space-y-4">
+                {[
+                  { label: 'Run blockchain nodes', icon: Server },
+                  { label: 'Maintain RPC providers', icon: Network },
+                  { label: 'Develop smart contracts', icon: Layers },
+                  { label: 'Manage private keys', icon: Key },
+                  { label: 'Hire blockchain engineers', icon: Users },
+                ].map(({ label, icon: Icon }) => (
+                  <div key={label} className="flex items-center space-x-4 p-4 bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20 rounded-xl">
+                    <div className="w-8 h-8 bg-red-100 dark:bg-red-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Icon className="w-4 h-4 text-red-500" />
+                    </div>
+                    <span className="text-gray-700 dark:text-gray-300 line-through decoration-red-400">{label}</span>
+                    <span className="ml-auto text-red-400 font-bold text-lg">✕</span>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-8 p-6 bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-400/30 rounded-xl">
+                <p className="text-blue-800 dark:text-blue-300 font-semibold text-lg">Just call our API.</p>
+                <p className="text-blue-700 dark:text-blue-400 mt-1">Every blockchain operation runs on our platform — you focus on your product.</p>
+              </div>
+            </div>
+
+            {/* Right: API code showcase */}
+            <div>
+              <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-8">Everything via simple REST calls:</h3>
+              <div className="bg-gray-900 dark:bg-black/80 rounded-2xl border border-gray-700 dark:border-white/10 overflow-hidden font-mono text-sm">
+                <div className="flex items-center space-x-2 px-4 py-3 border-b border-gray-700 dark:border-white/10">
+                  <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                  <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                  <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                  <span className="ml-2 text-gray-400 text-xs">Mustody API</span>
+                </div>
+                <div className="p-6 space-y-3">
+                  {[
+                    { method: 'POST', endpoint: '/wallets', color: 'text-green-400', desc: 'Create a custody wallet' },
+                    { method: 'POST', endpoint: '/tokens/create', color: 'text-green-400', desc: 'Deploy a token contract' },
+                    { method: 'POST', endpoint: '/tokens/mint', color: 'text-green-400', desc: 'Mint tokens' },
+                    { method: 'POST', endpoint: '/tokens/burn', color: 'text-red-400', desc: 'Burn tokens' },
+                    { method: 'POST', endpoint: '/tokens/transfer', color: 'text-green-400', desc: 'Transfer assets' },
+                    { method: 'GET', endpoint: '/tokens/balance', color: 'text-blue-400', desc: 'Check balance' },
+                    { method: 'POST', endpoint: '/transactions/sign', color: 'text-green-400', desc: 'Sign & broadcast tx' },
+                  ].map(({ method, endpoint, color, desc }, i) => (
+                    <motion.div
+                      key={endpoint}
+                      initial={{ opacity: 0, x: 20 }}
+                      whileInView={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.4, delay: i * 0.08 }}
+                      viewport={{ once: true }}
+                      className="flex items-center space-x-3 group"
+                    >
+                      <span className={`${color} font-bold w-10 flex-shrink-0 text-xs`}>{method}</span>
+                      <span className="text-white">{endpoint}</span>
+                      <span className="text-gray-500 text-xs hidden group-hover:inline-block transition-opacity ml-2">— {desc}</span>
+                    </motion.div>
+                  ))}
+                </div>
+                <div className="px-6 pb-5 pt-1 border-t border-gray-700 dark:border-white/10">
+                  <p className="text-gray-500 text-xs">All blockchain complexity handled on our end. Zero infrastructure needed.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Features Section */}
       <section id="features" className="relative py-24 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-20">
             <h2 className="text-5xl font-bold mb-6">
               <span className="bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
-                MPC Custody Technology
+                Why Mustody BaaS?
               </span>
             </h2>
             <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-              Advanced Multi-Party Computation ensures your digital assets are protected with institutional-grade security and compliance.
+              More than an MPC wallet — a complete Blockchain-as-a-Service platform. No infrastructure, no specialists, no complexity.
             </p>
           </div>
           
@@ -373,9 +465,9 @@ export function Homepage() {
                   <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center mb-6">
                     <Shield className="h-8 w-8 text-white" />
                   </div>
-                  <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">MPC Custody Security</h3>
+                  <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">Zero Infrastructure Overhead</h3>
                   <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-                    Multi-Party Computation eliminates single points of failure. Private keys are never fully reconstructed, ensuring maximum security for institutional custody.
+                    No nodes to run, no RPC endpoints to maintain, no smart contracts to deploy. Your team ships faster while we handle the entire blockchain layer.
                   </p>
                 </CardContent>
               </Card>
@@ -390,11 +482,11 @@ export function Homepage() {
               <Card className="bg-white/50 dark:bg-black/40 border-gray-200 dark:border-white/10 backdrop-blur-md hover:bg-white/70 dark:hover:bg-black/60 transition-all duration-300">
                 <CardContent className="p-8">
                   <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-xl flex items-center justify-center mb-6">
-                    <Network className="h-8 w-8 text-white" />
+                    <Lock className="h-8 w-8 text-white" />
                   </div>
-                  <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">Cross-Chain Custody</h3>
+                  <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">MPC-Powered Key Security</h3>
                   <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-                    Manage digital assets across Ethereum, BSC, Cosmos, and 50+ blockchains from a single custody platform with unified security protocols.
+                    Private keys are never fully reconstructed. Multi-Party Computation splits signing across distributed nodes — no single point of failure, ever.
                   </p>
                 </CardContent>
               </Card>
@@ -411,9 +503,9 @@ export function Homepage() {
                   <div className="w-16 h-16 bg-gradient-to-br from-teal-500 to-green-500 rounded-xl flex items-center justify-center mb-6">
                     <Wallet className="h-8 w-8 text-white" />
                   </div>
-                  <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">Enterprise Wallet APIs</h3>
+                  <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">API-First, Developer Ready</h3>
                   <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-                    Institutional-grade custody APIs for wallet creation, secure transactions, and compliance reporting. Built for banks, exchanges, and fintech companies.
+                    Full token lifecycle, wallet management, and transaction signing — all via REST. Integrate blockchain into any product in hours, not months.
                   </p>
                 </CardContent>
               </Card>
