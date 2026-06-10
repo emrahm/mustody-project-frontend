@@ -319,8 +319,8 @@ export const walletAPI = {
     api.get<{ wallets: UserWallet[] }>('/wallet', { params: userId ? { user_id: userId } : undefined }),
 
   // Create a wallet for a given chain type
-  createWallet: (mpc_chain_type: 'EVM' | 'COSMOS' | 'SOLANA', external_user_id?: string) =>
-    api.post<UserWallet>('/wallet/create', { mpc_chain_type, external_user_id }),
+  createWallet: (mpc_chain_type: 'EVM' | 'COSMOS' | 'SOLANA', external_user_id?: string, chain_id?: string) =>
+    api.post<UserWallet>('/wallet/create', { mpc_chain_type, external_user_id, chain_id }),
 
   // Get balance for a wallet on a specific chain
   getBalance: (wallet_id: string, chain_id: string) =>

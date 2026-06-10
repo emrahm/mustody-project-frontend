@@ -56,6 +56,7 @@ const CHAIN_COLOR: Record<string, { color: string; bg: string }> = {
   EVM:    { color: '#627EEA', bg: 'rgba(98,126,234,0.12)' },
   COSMOS: { color: '#6F73D2', bg: 'rgba(111,115,210,0.12)' },
   SOLANA: { color: '#9945FF', bg: 'rgba(153,69,255,0.12)' },
+  TRON:   { color: '#627EEA', bg: 'rgba(98,126,234,0.12)' },
 };
 
 // ─── Icon helpers ─────────────────────────────────────────────────────────────
@@ -103,7 +104,7 @@ interface DepositDialogProps {
 
 function DepositDialog({ open, onClose, coin, chain, onCreateWallet }: DepositDialogProps) {
   const theme = useTheme();
-  const accent = CHAIN_COLOR[chain?.mpc_chain_type ?? 'EVM'];
+  const accent = CHAIN_COLOR[chain?.mpc_chain_type ?? ''] ?? CHAIN_COLOR.EVM;
   const hasWallet = !!chain?.wallet?.public_address;
   const address = chain?.wallet?.public_address ?? '';
 
@@ -249,7 +250,7 @@ interface WithdrawDialogProps {
 
 function WithdrawDialog({ open, onClose, coin, chain, onSuccess }: WithdrawDialogProps) {
   const theme = useTheme();
-  const accent = CHAIN_COLOR[chain?.mpc_chain_type ?? 'EVM'];
+  const accent = CHAIN_COLOR[chain?.mpc_chain_type ?? ''] ?? CHAIN_COLOR.EVM;
   const { user } = useAuth();
 
   const [step, setStep] = useState<WithdrawStep>(() => user?.two_factor_enabled ? 'form' : 'setup_2fa');
@@ -728,7 +729,7 @@ function WithdrawDialog({ open, onClose, coin, chain, onSuccess }: WithdrawDialo
 
 interface CoinPanelProps {
   chain: PortfolioChain;
-  onCreateWallet: (type: string) => void;
+  onCreateWallet: (type: string, chain_id: string) => void;
   creating: boolean;
   onDeposit: (coin: PortfolioCoin, chain: PortfolioChain) => void;
   onWithdraw: (coin: PortfolioCoin, chain: PortfolioChain) => void;
@@ -879,7 +880,7 @@ function CoinPanel({ chain, onCreateWallet, creating, onDeposit, onWithdraw, ref
           </Typography>
           {!creating ? (
             <Button size="small" variant="contained" startIcon={<Add />}
-              onClick={() => onCreateWallet(chain.mpc_chain_type)}
+              onClick={() => onCreateWallet(chain.mpc_chain_type, chain.chain_id)}
               sx={{ mt: 0.5, borderRadius: 2, fontWeight: 700, bgcolor: accent.color,
                 '&:hover': { bgcolor: accent.color, filter: 'brightness(1.1)' } }}>
               Create Wallet
@@ -1032,10 +1033,10 @@ export default function WalletPage() {
     return () => clearInterval(id);
   }, [chains, load]);
 
-  const handleCreate = async (mpcChainType: string) => {
+  const handleCreate = async (mpcChainType: string, chainId: string) => {
     setCreating(mpcChainType);
     try {
-      await walletAPI.createWallet(mpcChainType as any);
+      await walletAPI.createWallet(mpcChainType as any, undefined, chainId);
       await load();
       setSnack({ open: true, msg: 'Wallet created!', ok: true });
     } catch (e: any) {
@@ -1169,8 +1170,9 @@ export default function WalletPage() {
         chain={depositState?.chain ?? null}
         onCreateWallet={() => {
           const t = depositState?.chain?.mpc_chain_type;
+          const cid = depositState?.chain?.chain_id;
           setDepositState(null);
-          if (t) handleCreate(t);
+          if (t && cid) handleCreate(t, cid);
         }}
       />
 

@@ -186,6 +186,7 @@ export function Homepage() {
               <a href="#security" className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-medium transition-colors">Security</a>
               <a href="#chains" className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-medium transition-colors">Chains</a>
               <a href="#pricing" className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-medium transition-colors">Pricing</a>
+              <a href={import.meta.env.VITE_DOCS_URL || 'http://localhost:3001/'} target="_blank" rel="noopener noreferrer" className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-medium transition-colors">Docs</a>
             </div>
             
             <div className="flex items-center space-x-3">
@@ -642,10 +643,10 @@ export function Homepage() {
             <div>
               <h3 className="font-semibold mb-4 text-gray-900 dark:text-white">Product</h3>
               <ul className="space-y-3 text-gray-600 dark:text-gray-400">
-                <li><a href="#" className="hover:text-gray-900 dark:hover:text-white transition-colors">Custody Wallet</a></li>
-                <li><a href="#" className="hover:text-gray-900 dark:hover:text-white transition-colors">Multi-Chain APIs</a></li>
-                <li><a href="#" className="hover:text-gray-900 dark:hover:text-white transition-colors">MPC Security</a></li>
-                <li><a href="#" className="hover:text-gray-900 dark:hover:text-white transition-colors">Documentation</a></li>
+                <li><a href={`${import.meta.env.VITE_DOCS_URL || 'http://localhost:3001/'}docs/concepts/wallets`} target="_blank" rel="noopener noreferrer" className="hover:text-gray-900 dark:hover:text-white transition-colors">Custody Wallet</a></li>
+                <li><a href={`${import.meta.env.VITE_DOCS_URL || 'http://localhost:3001/'}docs/api/wallets/create`} target="_blank" rel="noopener noreferrer" className="hover:text-gray-900 dark:hover:text-white transition-colors">Multi-Chain APIs</a></li>
+                <li><a href={`${import.meta.env.VITE_DOCS_URL || 'http://localhost:3001/'}docs/concepts/wallets`} target="_blank" rel="noopener noreferrer" className="hover:text-gray-900 dark:hover:text-white transition-colors">MPC Security</a></li>
+                <li><a href={`${import.meta.env.VITE_DOCS_URL || 'http://localhost:3001/'}docs/getting-started/introduction`} target="_blank" rel="noopener noreferrer" className="hover:text-gray-900 dark:hover:text-white transition-colors">Documentation</a></li>
               </ul>
             </div>
             
@@ -670,7 +671,7 @@ export function Homepage() {
           </div>
           
           <div className="border-t border-gray-200 dark:border-white/10 pt-8 text-center text-gray-600 dark:text-gray-400">
-            <p>&copy; 2024 Mustody. All rights reserved.</p>
+            <p>&copy; 2026 Mustody. All rights reserved.</p>
           </div>
         </div>
       </footer>

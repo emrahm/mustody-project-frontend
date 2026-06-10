@@ -246,10 +246,21 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           <Typography
             variant="caption"
             color="primary"
-            sx={{ cursor: 'pointer', textDecoration: 'underline' }}
+            sx={{ cursor: 'pointer', textDecoration: 'underline', display: 'block', mb: 0.5 }}
             onClick={() => setLocation('/support')}
           >
             Get Support →
+          </Typography>
+          <Typography
+            component="a"
+            href={import.meta.env.VITE_DOCS_URL || 'http://localhost:3001/'}
+            target="_blank"
+            rel="noopener noreferrer"
+            variant="caption"
+            color="primary"
+            sx={{ textDecoration: 'underline', display: 'block' }}
+          >
+            Documentation →
           </Typography>
         </Box>
       </Box>
