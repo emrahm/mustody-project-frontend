@@ -157,6 +157,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             { id: '15b', label: 'Deployed Contracts', path: '/deployed-contracts', icon: 'CloudSync', roles: ['tenant_admin'], order: 15 },
         );
       }
+    } else if (userData.members?.length) {
+      menuItems.push(
+        { id: '16', label: 'MPC Infrastructure', path: '/tenant/mpc-clusters', icon: 'Hub', roles: [], order: 14 },
+      );
     }
 
     // Common items for all authenticated users

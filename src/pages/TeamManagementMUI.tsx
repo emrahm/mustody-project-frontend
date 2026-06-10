@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'wouter';
 import {
   Box,
   Card,
@@ -34,6 +35,7 @@ import {
   CheckCircle,
   Schedule,
   Cancel,
+  AccountBalanceWallet,
 } from '@mui/icons-material';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useNotifications } from '@/contexts/NotificationContext';
@@ -56,8 +58,10 @@ interface Tenant {
 }
 
 export default function TeamManagementMUI() {
+  const [, setLocation] = useLocation();
   const { addNotification } = useNotifications();
-  const { user, hasGlobalRole } = useAuth();
+  const { user, hasGlobalRole, hasRole } = useAuth();
+  const canViewMemberWallets = hasRole('tenant_admin') || hasGlobalRole('admin');
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [selectedTenant, setSelectedTenant] = useState<string>('');
@@ -249,6 +253,7 @@ export default function TeamManagementMUI() {
                       <TableCell>Email</TableCell>
                       <TableCell>Role</TableCell>
                       <TableCell>Joined</TableCell>
+                      {canViewMemberWallets && <TableCell align="right">Actions</TableCell>}
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -281,6 +286,18 @@ export default function TeamManagementMUI() {
                             </Typography>
                           </Box>
                         </TableCell>
+                        {canViewMemberWallets && (
+                          <TableCell align="right">
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              startIcon={<AccountBalanceWallet />}
+                              onClick={() => setLocation(`/wallet?user_id=${member.user_id}`)}
+                            >
+                              Wallets
+                            </Button>
+                          </TableCell>
+                        )}
                       </TableRow>
                     ))}
                   </TableBody>

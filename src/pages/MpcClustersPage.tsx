@@ -4,13 +4,19 @@ import {
   TableCell, TableContainer, TableHead, TableRow, Paper, Chip,
   IconButton, Tooltip, CircularProgress, Alert, Dialog, DialogTitle,
   DialogContent, DialogActions, TextField, Switch, FormControlLabel,
+  alpha, useTheme, Divider, List, ListItem, ListItemIcon, ListItemText,
 } from '@mui/material';
-import { Edit, PauseCircle, Refresh, Hub, UploadFile, VpnKey } from '@mui/icons-material';
+import {
+  Edit, PauseCircle, Refresh, Hub, UploadFile, VpnKey,
+  Security, CloudQueue, Lock, CheckCircle, Info,
+} from '@mui/icons-material';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
+
+type ApprovalStatus = 'approved' | 'pending' | 'rejected';
 
 interface MPCCluster {
   id: string;
@@ -19,20 +25,125 @@ interface MPCCluster {
   grpc_addr: string;
   node_id: string;
   secret_provider: string;
-  secret_ref: string; // always "**" from backend
+  secret_ref: string;
   tls_cert_file: string | null;
   tls_key_file: string | null;
   is_active: boolean;
+  approval_status: ApprovalStatus;
+  review_notes?: string;
+  reviewed_at?: string | null;
   expires_at: string | null;
   created_at: string;
+}
+
+interface MPCOverview {
+  routing_mode: 'shared' | 'dedicated' | 'pending_review';
+  can_configure: boolean;
+  active_cluster_name: string;
+  pending_cluster?: MPCCluster;
+  dedicated_cluster?: MPCCluster;
+}
+
+function approvalChip(status: ApprovalStatus) {
+  switch (status) {
+    case 'pending':
+      return <Chip label="Pending review" color="warning" size="small" />;
+    case 'rejected':
+      return <Chip label="Rejected" color="error" size="small" />;
+    default:
+      return <Chip label="Approved" color="success" size="small" />;
+  }
+}
+
+function MpcInfrastructureInfo({ overview, loading }: { overview: MPCOverview | null; loading: boolean }) {
+  const theme = useTheme();
+  if (loading) {
+    return <Box sx={{ display: 'flex', justifyContent: 'center', p: 6 }}><CircularProgress /></Box>;
+  }
+
+  const mode = overview?.routing_mode ?? 'shared';
+  const activeName = overview?.active_cluster_name ?? 'Mustody Shared MPC';
+
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+      <Card elevation={0} sx={{
+        borderRadius: 3,
+        border: `1px solid ${theme.palette.divider}`,
+        background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.08)} 0%, ${alpha(theme.palette.background.paper, 1)} 70%)`,
+      }}>
+        <CardContent sx={{ p: 3 }}>
+          <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
+            <Hub sx={{ fontSize: 40, color: 'primary.main', mt: 0.5 }} />
+            <Box>
+              <Typography variant="h5" fontWeight={800} gutterBottom>MPC Infrastructure</Typography>
+              <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 720, lineHeight: 1.7 }}>
+                Wallet creation, transfers, and contract signing are handled by <strong>Multi-Party Computation (MPC)</strong> nodes.
+                Your organization does not need to configure anything to get started.
+              </Typography>
+            </Box>
+          </Box>
+        </CardContent>
+      </Card>
+
+      <Alert severity="info" icon={<CloudQueue />} sx={{ borderRadius: 2 }}>
+        <Typography variant="subtitle2" fontWeight={700} gutterBottom>
+          {mode === 'dedicated' ? 'Dedicated MPC cluster active' : mode === 'pending_review' ? 'Dedicated cluster pending approval' : 'Using Mustody shared MPC'}
+        </Typography>
+        <Typography variant="body2">
+          {mode === 'dedicated'
+            ? `MPC requests for your tenant are routed to your approved cluster (${activeName}).`
+            : mode === 'pending_review'
+              ? 'Your tenant admin submitted a dedicated cluster request. Until Mustody approves it, all MPC traffic continues on the shared infrastructure.'
+              : 'No dedicated cluster is configured for your tenant. All MPC wallet and signing requests are processed on Mustody\'s shared, production-grade MPC servers.'}
+        </Typography>
+      </Alert>
+
+      <Card variant="outlined" sx={{ borderRadius: 2.5 }}>
+        <CardContent>
+          <Typography variant="subtitle1" fontWeight={700} gutterBottom>How routing works</Typography>
+          <List dense disablePadding>
+            <ListItem disableGutters sx={{ alignItems: 'flex-start', py: 1 }}>
+              <ListItemIcon sx={{ minWidth: 36, mt: 0.25 }}><CheckCircle color="success" fontSize="small" /></ListItemIcon>
+              <ListItemText
+                primary="Default (no configuration)"
+                secondary="Mustody shared MPC cluster handles wallet creation and transaction signing automatically."
+              />
+            </ListItem>
+            <ListItem disableGutters sx={{ alignItems: 'flex-start', py: 1 }}>
+              <ListItemIcon sx={{ minWidth: 36, mt: 0.25 }}><Security color="primary" fontSize="small" /></ListItemIcon>
+              <ListItemText
+                primary="Optional dedicated cluster (tenant admin)"
+                secondary="Your organization can deploy mustody-project-round MPC nodes on your own infrastructure and route MPC traffic exclusively to your servers after Mustody admin approval."
+              />
+            </ListItem>
+            <ListItem disableGutters sx={{ alignItems: 'flex-start', py: 1 }}>
+              <ListItemIcon sx={{ minWidth: 36, mt: 0.25 }}><Lock color="warning" fontSize="small" /></ListItemIcon>
+              <ListItemText
+                primary="Configuration is permanent after approval"
+                secondary="gRPC address, node ID, and cluster identity cannot be changed once approved. Plan your endpoints, TLS certificates, and Vault secrets carefully before submitting."
+              />
+            </ListItem>
+          </List>
+        </CardContent>
+      </Card>
+
+      {!overview?.can_configure && (
+        <Alert severity="success" sx={{ borderRadius: 2 }}>
+          Contact your <strong>tenant administrator</strong> if your organization needs a dedicated MPC cluster on private infrastructure.
+        </Alert>
+      )}
+    </Box>
+  );
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function MpcClustersPage() {
-  const { hasGlobalRole, user } = useAuth();
+  const theme = useTheme();
+  const { hasGlobalRole, hasRole } = useAuth();
   const isAdmin = hasGlobalRole('admin') || hasGlobalRole('owner');
-  const isTenantAdmin = !isAdmin && (user?.members?.some((m) => m.role === 'tenant_admin') ?? false);
+  const isTenantAdmin = !isAdmin && hasRole('tenant_admin');
+  const canManage = isAdmin || isTenantAdmin;
 
   const adminBase = '/admin/mpc-clusters';
   const tenantBase = '/tenant/mpc-clusters';
@@ -72,6 +183,15 @@ export default function MpcClustersPage() {
   const [createForm, setCreateForm] = useState({ name: '', grpc_addr: '', node_id: '', secret_ref: '' });
   const [createError, setCreateError] = useState<string | null>(null);
 
+  const [overview, setOverview] = useState<MPCOverview | null>(null);
+  const [overviewLoading, setOverviewLoading] = useState(!canManage);
+
+  // Admin review
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [reviewTarget, setReviewTarget] = useState<MPCCluster | null>(null);
+  const [reviewNotes, setReviewNotes] = useState('');
+  const [reviewError, setReviewError] = useState<string | null>(null);
+
   // ── Fetch ────────────────────────────────────────────────────────────────────
 
   const fetchClusters = useCallback(async () => {
@@ -88,7 +208,21 @@ export default function MpcClustersPage() {
     }
   }, [isAdmin]);
 
-  useEffect(() => { fetchClusters(); }, [fetchClusters]);
+  useEffect(() => { if (canManage) fetchClusters(); }, [fetchClusters, canManage]);
+
+  const fetchOverview = useCallback(async () => {
+    setOverviewLoading(true);
+    try {
+      const res = await api.get<MPCOverview>('/tenant/mpc-clusters/overview');
+      setOverview(res.data);
+    } catch {
+      setOverview(null);
+    } finally {
+      setOverviewLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchOverview(); }, [fetchOverview]);
 
   // ── Expiry helpers ───────────────────────────────────────────────────────────
 
@@ -213,22 +347,55 @@ export default function MpcClustersPage() {
       setCreateOpen(false);
       setCreateForm({ name: '', grpc_addr: '', node_id: '', secret_ref: '' });
       fetchClusters();
+      fetchOverview();
     } catch (e: any) {
-      setCreateError(e.response?.data?.error ?? 'Create failed');
+      setCreateError(e.response?.data?.error ?? 'Submit failed');
     }
+  };
+
+  const submitReview = async (approve: boolean) => {
+    if (!reviewTarget) return;
+    setReviewError(null);
+    setActionLoading(reviewTarget.id + '_review');
+    try {
+      await api.put(`${adminBase}/${reviewTarget.id}/review`, {
+        status: approve ? 'approved' : 'rejected',
+        review_notes: reviewNotes,
+      });
+      setReviewOpen(false);
+      setReviewNotes('');
+      fetchClusters();
+    } catch (e: any) {
+      setReviewError(e.response?.data?.error ?? 'Review failed');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const openReview = (c: MPCCluster) => {
+    setReviewTarget(c);
+    setReviewNotes('');
+    setReviewError(null);
+    setReviewOpen(true);
   };
 
   // ── Guard ────────────────────────────────────────────────────────────────────
 
-  if (!isAdmin && !isTenantAdmin) {
+  if (!canManage) {
     return (
       <DashboardLayout>
-        <Box sx={{ p: 3 }}><Alert severity="error">Access denied.</Alert></Box>
+        <Box sx={{ p: 3 }}>
+          <MpcInfrastructureInfo overview={overview} loading={overviewLoading} />
+        </Box>
       </DashboardLayout>
     );
   }
 
   // ── Render ───────────────────────────────────────────────────────────────────
+
+  const hasDedicatedRequest = clusters.some(c =>
+    c.tenant_id && (c.approval_status === 'pending' || c.approval_status === 'approved'),
+  );
 
   return (
     <DashboardLayout>
@@ -240,9 +407,9 @@ export default function MpcClustersPage() {
             <Typography variant="h5" fontWeight={600}>MPC Clusters</Typography>
           </Box>
           <Box sx={{ display: 'flex', gap: 1 }}>
-            {isTenantAdmin && (
+            {isTenantAdmin && !hasDedicatedRequest && (
               <Button variant="contained" size="small" onClick={() => { setCreateError(null); setCreateOpen(true); }}>
-                Add Cluster
+                Submit Cluster Request
               </Button>
             )}
             <Tooltip title="Refresh">
@@ -253,10 +420,31 @@ export default function MpcClustersPage() {
 
         {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
 
+        <Card elevation={0} sx={{ mb: 2, borderRadius: 2.5, border: `1px solid ${theme.palette.divider}`, bgcolor: alpha(theme.palette.primary.main, 0.04) }}>
+          <CardContent>
+            <Typography variant="subtitle1" fontWeight={800} gutterBottom>
+              {isTenantAdmin ? 'Dedicated MPC for your organization' : 'Tenant MPC cluster requests'}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.75, maxWidth: 900 }}>
+              By default, all MPC wallet and signing requests use <strong>Mustody&apos;s shared MPC servers</strong>.
+              As a tenant admin you may register your own MPC nodes so traffic is routed to infrastructure you control.
+              Requests require <strong>Mustody admin approval</strong> before activation.
+              Once approved, <strong>gRPC address, node ID and cluster identity cannot be changed</strong> — only TLS renewal and secret rotation remain available.
+            </Typography>
+          </CardContent>
+        </Card>
+
+        {isTenantAdmin && overview?.routing_mode === 'pending_review' && (
+          <Alert severity="warning" sx={{ mb: 2 }} icon={<Info />}>
+            Your dedicated cluster request is <strong>awaiting Mustody admin approval</strong>.
+            Until then, wallets and transfers continue on the shared MPC infrastructure ({overview.active_cluster_name}).
+          </Alert>
+        )}
+
         {isTenantAdmin && (
           <Alert severity="info" sx={{ mb: 2 }}>
-            You can upload TLS certificates and rotate the secret key for your cluster.
-            Certificate expiry date is read automatically from the uploaded file.
+            While pending review you may upload TLS certificates and configure the Vault secret.
+            After approval the cluster configuration is locked.
           </Alert>
         )}
 
@@ -269,12 +457,13 @@ export default function MpcClustersPage() {
                 <Alert severity="success" sx={{ mb: 2 }}>
                   <Typography variant="body2" fontWeight={600}>Shared MPC Cluster Active</Typography>
                   <Typography variant="body2">
-                    Your tenant is currently using Mustody's shared MPC infrastructure. Wallet creation and signing are fully operational.
-                    You can optionally add a dedicated cluster for full isolation and control.
+                    Your tenant uses Mustody&apos;s shared MPC infrastructure. Wallet creation and signing work out of the box.
+                    Submit a dedicated cluster request below if you need full isolation on your own servers.
                   </Typography>
                 </Alert>
-                <Button variant="outlined" size="small" onClick={() => { setCreateError(null); setCreateOpen(true); }}>
-                  Add Dedicated Cluster
+                <Button variant="outlined" size="small" disabled={hasDedicatedRequest}
+                  onClick={() => { setCreateError(null); setCreateOpen(true); }}>
+                  Submit Dedicated Cluster Request
                 </Button>
               </Box>
             ) : (
@@ -288,7 +477,8 @@ export default function MpcClustersPage() {
                       <TableCell>Node ID</TableCell>
                       <TableCell>Secret</TableCell>
                       <TableCell>TLS</TableCell>
-                      <TableCell>Status</TableCell>
+                      <TableCell>Approval</TableCell>
+                      <TableCell>Runtime</TableCell>
                       <TableCell>Cert Expires</TableCell>
                       <TableCell align="right">Actions</TableCell>
                     </TableRow>
@@ -323,6 +513,9 @@ export default function MpcClustersPage() {
                             : <Chip label="None" size="small" variant="outlined" />}
                         </TableCell>
                         <TableCell>
+                          {approvalChip(c.approval_status ?? 'approved')}
+                        </TableCell>
+                        <TableCell>
                           <Chip
                             label={c.is_active ? 'Active' : 'Inactive'}
                             color={c.is_active ? 'success' : 'default'}
@@ -331,6 +524,16 @@ export default function MpcClustersPage() {
                         </TableCell>
                         <TableCell>{expiryChip(c)}</TableCell>
                         <TableCell align="right">
+                          {/* Admin: review pending tenant requests */}
+                          {isAdmin && c.approval_status === 'pending' && c.tenant_id && (
+                            <>
+                              <Tooltip title="Approve">
+                                <IconButton size="small" color="success" onClick={() => openReview(c)}>
+                                  <CheckCircle fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            </>
+                          )}
                           {/* Admin: edit cluster fields */}
                           {isAdmin && (
                             <Tooltip title="Edit">
@@ -510,19 +713,64 @@ export default function MpcClustersPage() {
           </DialogActions>
         </Dialog>
 
+        {/* ── Admin Review Dialog ── */}
+        <Dialog open={reviewOpen} onClose={() => setReviewOpen(false)} maxWidth="sm" fullWidth>
+          <DialogTitle>Review MPC Cluster Request</DialogTitle>
+          <DialogContent dividers>
+            {reviewError && <Alert severity="error" sx={{ mb: 2 }}>{reviewError}</Alert>}
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              Approving activates routing to this cluster and <strong>locks the configuration permanently</strong>.
+              Rejecting keeps the tenant on Mustody shared MPC.
+            </Alert>
+            {reviewTarget && (
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="body2"><strong>Name:</strong> {reviewTarget.name}</Typography>
+                <Typography variant="body2" fontFamily="monospace"><strong>gRPC:</strong> {reviewTarget.grpc_addr}</Typography>
+                <Typography variant="body2" fontFamily="monospace"><strong>Node:</strong> {reviewTarget.node_id}</Typography>
+              </Box>
+            )}
+            <TextField
+              label="Review notes (optional)"
+              value={reviewNotes}
+              onChange={e => setReviewNotes(e.target.value)}
+              fullWidth
+              multiline
+              minRows={2}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setReviewOpen(false)}>Cancel</Button>
+            <Button color="error" onClick={() => submitReview(false)} disabled={actionLoading === reviewTarget?.id + '_review'}>
+              Reject
+            </Button>
+            <Button variant="contained" color="success" onClick={() => submitReview(true)} disabled={actionLoading === reviewTarget?.id + '_review'}>
+              {actionLoading === reviewTarget?.id + '_review' ? <CircularProgress size={20} /> : 'Approve & Activate'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
         {/* ── Create Cluster (tenant_admin) ── */}
         <Dialog open={createOpen} onClose={() => setCreateOpen(false)} maxWidth="md" fullWidth>
-          <DialogTitle>Add MPC Cluster</DialogTitle>
+          <DialogTitle>Submit Dedicated MPC Cluster</DialogTitle>
           <DialogContent dividers>
             {createError && <Alert severity="error" sx={{ mb: 2 }}>{createError}</Alert>}
+            <Alert severity="warning" sx={{ mb: 2 }} icon={<Lock />}>
+              <Typography variant="body2" fontWeight={700} gutterBottom>Important — read before submitting</Typography>
+              <Typography variant="body2" component="div">
+                • Your request is sent to <strong>Mustody admin for approval</strong> (maker-checker).<br />
+                • Until approved, MPC traffic stays on <strong>Mustody shared servers</strong>.<br />
+                • After approval, <strong>gRPC address, node ID and cluster name cannot be changed</strong>.<br />
+                • Double-check endpoints, TLS, and Vault secrets before submitting.
+              </Typography>
+            </Alert>
             <Alert severity="info" sx={{ mb: 2 }}>
               <Typography variant="body2" fontWeight={600} gutterBottom>Setup Requirements:</Typography>
               <Typography variant="body2" component="div">
                 1. Install <strong>mustody-project-round</strong> MPC node on your infrastructure<br/>
-                2. Install <strong>HashiCorp Vault</strong> server for secret management<br/>
-                3. Configure the MPC node to allow backend access (gRPC endpoint)<br/>
-                4. Set environment variable <code>GRPC_CLUSTER_SECRET_&lt;tenant_id&gt;</code> with your shared secret<br/>
-                5. Ensure the node is accessible from this backend system
+                2. Install <strong>HashiCorp Vault</strong> for secret management<br/>
+                3. Expose the gRPC endpoint to Mustody backend<br/>
+                4. Configure shared secret in Vault / environment<br/>
+                5. Upload TLS certificate after submission (while pending review)
               </Typography>
             </Alert>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
@@ -542,7 +790,7 @@ export default function MpcClustersPage() {
             <Button onClick={() => setCreateOpen(false)}>Cancel</Button>
             <Button variant="contained" onClick={submitCreate}
               disabled={!createForm.name || !createForm.grpc_addr || !createForm.node_id}>
-              Create
+              Submit for Admin Review
             </Button>
           </DialogActions>
         </Dialog>

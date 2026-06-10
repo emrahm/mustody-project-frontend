@@ -6,15 +6,32 @@ import {
   Alert, Snackbar, LinearProgress, Collapse, Divider,
   Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, InputAdornment, Step, Stepper, StepLabel,
+  Autocomplete,
 } from '@mui/material';
 import {
   Add, ContentCopy, OpenInNew, Error as ErrorIcon,
   AccountBalanceWallet, Refresh, South, North,
-  CheckCircle, ArrowBack, Launch, WarningAmber,
+  CheckCircle, ArrowBack, Launch, WarningAmber, People, Person,
 } from '@mui/icons-material';
+import { useLocation } from 'wouter';
 import DashboardLayout from '@/components/DashboardLayout';
-import { walletAPI, PortfolioChain, PortfolioCoin } from '@/lib/api';
+import { api, walletAPI, PortfolioChain, PortfolioCoin } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
+
+interface TeamMemberOption {
+  user_id: string;
+  name: string;
+  email: string;
+  role?: string;
+  isSelf?: boolean;
+}
+
+function memberInitials(name: string, email: string) {
+  const src = (name || email || '?').trim();
+  const parts = src.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return src.slice(0, 2).toUpperCase();
+}
 
 // ─── Icon CDN ─────────────────────────────────────────────────────────────────
 
@@ -734,9 +751,10 @@ interface CoinPanelProps {
   onDeposit: (coin: PortfolioCoin, chain: PortfolioChain) => void;
   onWithdraw: (coin: PortfolioCoin, chain: PortfolioChain) => void;
   refreshKey?: number;
+  viewOnly?: boolean;
 }
 
-function CoinPanel({ chain, onCreateWallet, creating, onDeposit, onWithdraw, refreshKey }: CoinPanelProps) {
+function CoinPanel({ chain, onCreateWallet, creating, onDeposit, onWithdraw, refreshKey, viewOnly }: CoinPanelProps) {
   const theme = useTheme();
   const accent = CHAIN_COLOR[chain.mpc_chain_type] ?? CHAIN_COLOR.EVM;
   const isActive = chain.wallet?.status === 'active';
@@ -830,25 +848,27 @@ function CoinPanel({ chain, onCreateWallet, creating, onDeposit, onWithdraw, ref
 
                 {/* Action buttons */}
                 <Box sx={{ display: 'flex', gap: 0.75, flexShrink: 0 }}>
-                  <Tooltip title={`Withdraw ${coin.symbol}`}>
-                    <span>
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        startIcon={<North sx={{ fontSize: 13 }} />}
-                        onClick={() => onWithdraw(coin, chain)}
-                        disabled={parseFloat(coin.balance) <= 0}
-                        sx={{
-                          borderRadius: 1.5, fontWeight: 700, fontSize: '0.72rem',
-                          px: 1.25, py: 0.5, minWidth: 0,
-                          borderColor: alpha('#ef4444', 0.5), color: '#ef4444',
-                          '&:hover': { borderColor: '#ef4444', bgcolor: alpha('#ef4444', 0.08) },
-                          '&.Mui-disabled': { opacity: 0.35 },
-                        }}>
-                        Send
-                      </Button>
-                    </span>
-                  </Tooltip>
+                  {!viewOnly && (
+                    <Tooltip title={`Withdraw ${coin.symbol}`}>
+                      <span>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          startIcon={<North sx={{ fontSize: 13 }} />}
+                          onClick={() => onWithdraw(coin, chain)}
+                          disabled={parseFloat(coin.balance) <= 0}
+                          sx={{
+                            borderRadius: 1.5, fontWeight: 700, fontSize: '0.72rem',
+                            px: 1.25, py: 0.5, minWidth: 0,
+                            borderColor: alpha('#ef4444', 0.5), color: '#ef4444',
+                            '&:hover': { borderColor: '#ef4444', bgcolor: alpha('#ef4444', 0.08) },
+                            '&.Mui-disabled': { opacity: 0.35 },
+                          }}>
+                          Send
+                        </Button>
+                      </span>
+                    </Tooltip>
+                  )}
                   <Tooltip title={`Deposit ${coin.symbol}`}>
                     <Button
                       size="small"
@@ -878,15 +898,17 @@ function CoinPanel({ chain, onCreateWallet, creating, onDeposit, onWithdraw, ref
           <Typography variant="caption" color="text.secondary" textAlign="center" sx={{ px: 2 }}>
             Create a {chain.mpc_chain_type} wallet to start receiving funds.
           </Typography>
-          {!creating ? (
-            <Button size="small" variant="contained" startIcon={<Add />}
-              onClick={() => onCreateWallet(chain.mpc_chain_type, chain.chain_id)}
-              sx={{ mt: 0.5, borderRadius: 2, fontWeight: 700, bgcolor: accent.color,
-                '&:hover': { bgcolor: accent.color, filter: 'brightness(1.1)' } }}>
-              Create Wallet
-            </Button>
-          ) : (
-            <CircularProgress size={22} sx={{ color: accent.color, mt: 0.5 }} />
+          {!viewOnly && (
+            !creating ? (
+              <Button size="small" variant="contained" startIcon={<Add />}
+                onClick={() => onCreateWallet(chain.mpc_chain_type, chain.chain_id)}
+                sx={{ mt: 0.5, borderRadius: 2, fontWeight: 700, bgcolor: accent.color,
+                  '&:hover': { bgcolor: accent.color, filter: 'brightness(1.1)' } }}>
+                Create Wallet
+              </Button>
+            ) : (
+              <CircularProgress size={22} sx={{ color: accent.color, mt: 0.5 }} />
+            )
           )}
         </Box>
       ) : null}
@@ -997,6 +1019,12 @@ function MpcInfoBanner({ active }: { active: boolean }) {
 
 export default function WalletPage() {
   const theme = useTheme();
+  const [location, setLocation] = useLocation();
+  const { user, hasRole, hasGlobalRole } = useAuth();
+  const canViewTeamWallets = hasRole('tenant_admin') || hasGlobalRole('admin');
+
+  const [teamMembers, setTeamMembers] = useState<TeamMemberOption[]>([]);
+  const [selectedMember, setSelectedMember] = useState<TeamMemberOption | null>(null);
   const [chains, setChains] = useState<PortfolioChain[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -1006,14 +1034,34 @@ export default function WalletPage() {
   const [withdrawState, setWithdrawState] = useState<{ coin: PortfolioCoin; chain: PortfolioChain } | null>(null);
   const [snack, setSnack] = useState<{ open: boolean; msg: string; ok: boolean }>({ open: false, msg: '', ok: true });
   const [refreshKeys, setRefreshKeys] = useState<Record<string, number>>({});
+  const [memberSearchInput, setMemberSearchInput] = useState('');
+  const [memberSuggestOpen, setMemberSuggestOpen] = useState(false);
+
+  const selfOption: TeamMemberOption | null = user
+    ? { user_id: user.id, name: user.name || 'Me', email: user.email, isSelf: true }
+    : null;
+
+  const memberOptions: TeamMemberOption[] = React.useMemo(() => {
+    if (!selfOption) return teamMembers;
+    const seen = new Set<string>();
+    const merged: TeamMemberOption[] = [];
+    for (const m of [selfOption, ...teamMembers]) {
+      if (seen.has(m.user_id)) continue;
+      seen.add(m.user_id);
+      merged.push(m);
+    }
+    return merged;
+  }, [selfOption, teamMembers]);
+
+  const viewOnly = !!(canViewTeamWallets && selectedMember && user && selectedMember.user_id !== user.id);
 
   const handleWithdrawSuccess = useCallback((chainId: string) => {
     setRefreshKeys(prev => ({ ...prev, [chainId]: (prev[chainId] ?? 0) + 1 }));
   }, []);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (userId?: string) => {
     try {
-      const res = await walletAPI.getPortfolio();
+      const res = await walletAPI.getPortfolio(userId);
       const loaded: PortfolioChain[] = res.data.data?.chains ?? [];
       setChains(loaded);
       setSelectedChainId(prev => prev ?? loaded[0]?.chain_id ?? null);
@@ -1025,19 +1073,72 @@ export default function WalletPage() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    if (!canViewTeamWallets) return;
+    api.get('/tenant/members')
+      .then(res => {
+        const members: TeamMemberOption[] = (res.data.members || []).map((m: {
+          user_id: string;
+          name: string;
+          email: string;
+          role?: string;
+        }) => ({
+          user_id: m.user_id,
+          name: m.name,
+          email: m.email,
+          role: m.role,
+        }));
+        setTeamMembers(members);
+      })
+      .catch(() => setTeamMembers([]));
+  }, [canViewTeamWallets]);
+
+  useEffect(() => {
+    if (!user || memberOptions.length === 0) return;
+    const param = new URLSearchParams(window.location.search).get('user_id');
+    const target = (param ? memberOptions.find(m => m.user_id === param) : null)
+      ?? memberOptions.find(m => m.user_id === user.id)
+      ?? selfOption;
+    if (target && target.user_id !== selectedMember?.user_id) {
+      setSelectedMember(target);
+    }
+  }, [location, user, memberOptions, selfOption, selectedMember?.user_id]);
+
+  useEffect(() => {
+    if (!selectedMember) return;
+    setMemberSearchInput(`${selectedMember.name} · ${selectedMember.email}`);
+  }, [selectedMember?.user_id, selectedMember?.name, selectedMember?.email]);
+
+  useEffect(() => {
+    if (!selectedMember) return;
+    setLoading(true);
+    const isSelf = user?.id === selectedMember.user_id;
+    load(isSelf ? undefined : selectedMember.user_id);
+  }, [selectedMember, user?.id, load]);
 
   useEffect(() => {
     if (!chains.some(c => c.wallet?.status === 'pending')) return;
-    const id = setInterval(load, 10_000);
+    const isSelf = !selectedMember || user?.id === selectedMember.user_id;
+    const id = setInterval(() => load(isSelf ? undefined : selectedMember?.user_id), 10_000);
     return () => clearInterval(id);
-  }, [chains, load]);
+  }, [chains, load, selectedMember, user?.id]);
+
+  const handleMemberChange = (_: unknown, value: TeamMemberOption | null) => {
+    if (!value) return;
+    setSelectedMember(value);
+    setMemberSearchInput(`${value.name} · ${value.email}`);
+    setMemberSuggestOpen(false);
+    const isSelf = user?.id === value.user_id;
+    setLocation(isSelf ? '/wallet' : `/wallet?user_id=${value.user_id}`);
+  };
 
   const handleCreate = async (mpcChainType: string, chainId: string) => {
+    if (viewOnly) return;
     setCreating(mpcChainType);
     try {
       await walletAPI.createWallet(mpcChainType as any, undefined, chainId);
-      await load();
+      const isSelf = !selectedMember || user?.id === selectedMember.user_id;
+      await load(isSelf ? undefined : selectedMember?.user_id);
       setSnack({ open: true, msg: 'Wallet created!', ok: true });
     } catch (e: any) {
       setSnack({ open: true, msg: e?.response?.data?.message || 'Failed to create wallet.', ok: false });
@@ -1054,19 +1155,159 @@ export default function WalletPage() {
       <Box sx={{ p: { xs: 2, md: 3 } }}>
 
         {/* Header */}
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-          <Box>
+        <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 2, gap: 2, flexWrap: 'wrap' }}>
+          <Box sx={{ flex: 1, minWidth: 200 }}>
             <Typography variant="h5" fontWeight={800} letterSpacing="-0.5px">Wallets</Typography>
             <Typography variant="body2" color="text.secondary">
               {loading ? 'Loading…' : error ? 'Could not load' : `${activeCount} of ${chains.length} networks active`}
+              {viewOnly && selectedMember ? ` · ${selectedMember.name}` : ''}
             </Typography>
           </Box>
           <Tooltip title="Refresh">
-            <IconButton onClick={() => { setLoading(true); load(); }} disabled={loading}>
+            <IconButton
+              onClick={() => {
+                setLoading(true);
+                const isSelf = !selectedMember || user?.id === selectedMember.user_id;
+                load(isSelf ? undefined : selectedMember?.user_id);
+              }}
+              disabled={loading}
+            >
               <Refresh />
             </IconButton>
           </Tooltip>
         </Box>
+
+        {canViewTeamWallets && memberOptions.length > 0 && (
+          <Card
+            elevation={0}
+            sx={{
+              mb: 3,
+              borderRadius: 3,
+              border: `1px solid ${theme.palette.divider}`,
+              background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.08)} 0%, ${alpha(theme.palette.primary.main, 0.02)} 55%, ${alpha(theme.palette.background.paper, 1)} 100%)`,
+              overflow: 'visible',
+            }}
+          >
+            <CardContent sx={{ py: 2.25, px: 2.5, '&:last-child': { pb: 2.25 } }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.75 }}>
+                  <Avatar
+                    sx={{
+                      width: 48,
+                      height: 48,
+                      bgcolor: alpha(theme.palette.primary.main, 0.14),
+                      color: 'primary.main',
+                      border: `1px solid ${alpha(theme.palette.primary.main, 0.22)}`,
+                    }}
+                  >
+                    <People />
+                  </Avatar>
+                  <Box>
+                    <Typography variant="subtitle1" fontWeight={800} lineHeight={1.2}>
+                      Team wallets
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Type a name or email to search team members
+                    </Typography>
+                  </Box>
+                </Box>
+
+                <Autocomplete
+                  fullWidth
+                  size="medium"
+                  open={memberSuggestOpen}
+                  onOpen={() => {
+                    if (memberSearchInput.trim()) setMemberSuggestOpen(true);
+                  }}
+                  onClose={() => setMemberSuggestOpen(false)}
+                  openOnFocus={false}
+                  popupIcon={null}
+                  forcePopupIcon={false}
+                  clearOnBlur={false}
+                  inputValue={memberSearchInput}
+                  onInputChange={(_, value, reason) => {
+                    if (reason === 'reset') return;
+                    setMemberSearchInput(value);
+                    setMemberSuggestOpen(value.trim().length > 0);
+                  }}
+                  sx={{
+                    width: '100%',
+                    minWidth: { xs: '100%', md: 640 },
+                    '& .MuiAutocomplete-popupIndicator': { display: 'none' },
+                    '& .MuiAutocomplete-endAdornment': { mr: 0.5 },
+                  }}
+                  options={memberOptions}
+                  value={selectedMember}
+                  onChange={handleMemberChange}
+                  getOptionLabel={o => `${o.name} (${o.email})`}
+                  isOptionEqualToValue={(a, b) => a.user_id === b.user_id}
+                  noOptionsText={memberSearchInput.trim() ? 'No matching team members' : 'Start typing to search…'}
+                  renderInput={params => (
+                    <TextField
+                      {...params}
+                      placeholder="Search by name or email…"
+                      InputProps={{
+                        ...params.InputProps,
+                        startAdornment: (
+                          <>
+                            <InputAdornment position="start">
+                              <Person sx={{ color: 'text.secondary', fontSize: 20 }} />
+                            </InputAdornment>
+                            {params.InputProps.startAdornment}
+                          </>
+                        ),
+                      }}
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          borderRadius: 2.5,
+                          bgcolor: alpha(theme.palette.background.paper, 0.92),
+                          minHeight: 54,
+                          fontSize: '0.95rem',
+                        },
+                      }}
+                    />
+                  )}
+                  renderOption={(props, option) => (
+                    <Box component="li" {...props} sx={{ py: 1.25, px: 1.5, gap: 1.5, display: 'flex', alignItems: 'center' }}>
+                      <Avatar sx={{ width: 36, height: 36, fontSize: '0.82rem', bgcolor: option.isSelf ? 'primary.main' : alpha(theme.palette.primary.main, 0.12), color: option.isSelf ? 'primary.contrastText' : 'primary.main' }}>
+                        {memberInitials(option.name, option.email)}
+                      </Avatar>
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography variant="body2" fontWeight={700} noWrap>
+                          {option.name}
+                          {option.isSelf ? ' (You)' : ''}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" noWrap>
+                          {option.email}
+                        </Typography>
+                      </Box>
+                      {option.role && (
+                        <Chip
+                          size="small"
+                          label={option.role.replace('tenant_', '').replace('_', ' ')}
+                          sx={{ textTransform: 'capitalize', fontWeight: 600, fontSize: '0.68rem' }}
+                        />
+                      )}
+                    </Box>
+                  )}
+                  filterOptions={(opts, { inputValue }) => {
+                    const q = inputValue.trim().toLowerCase();
+                    if (!q) return [];
+                    return opts.filter(o =>
+                      o.name.toLowerCase().includes(q) || o.email.toLowerCase().includes(q),
+                    );
+                  }}
+                />
+              </Box>
+            </CardContent>
+          </Card>
+        )}
+
+        {viewOnly && selectedMember && (
+          <Alert severity="info" sx={{ mb: 2, borderRadius: 2 }}>
+            Viewing wallets for <strong>{selectedMember.name}</strong> ({selectedMember.email}). Send and create actions are disabled.
+          </Alert>
+        )}
 
         {/* MPC info banner */}
         {!loading && !error && <MpcInfoBanner active={!!creating} />}
@@ -1074,7 +1315,11 @@ export default function WalletPage() {
         {/* Error */}
         {!loading && error && (
           <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}
-            action={<Button size="small" color="inherit" onClick={() => { setLoading(true); load(); }}>Retry</Button>}>
+            action={<Button size="small" color="inherit" onClick={() => {
+              setLoading(true);
+              const isSelf = !selectedMember || user?.id === selectedMember.user_id;
+              load(isSelf ? undefined : selectedMember?.user_id);
+            }}>Retry</Button>}>
             {error}
           </Alert>
         )}
@@ -1146,6 +1391,7 @@ export default function WalletPage() {
                 onDeposit={(coin, ch) => setDepositState({ coin, chain: ch })}
                 onWithdraw={(coin, ch) => setWithdrawState({ coin, chain: ch })}
                 refreshKey={refreshKeys[selectedChain.chain_id] ?? 0}
+                viewOnly={viewOnly}
               />
             )}
           </Box>

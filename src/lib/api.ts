@@ -311,8 +311,10 @@ export interface PortfolioChain {
 export const walletAPI = {
   // Get portfolio: all chains with wallet status and coin balances
   // Backend wraps in { success, data: { chains } }
-  getPortfolio: () =>
-    api.get<{ success: boolean; data: { chains: PortfolioChain[] } }>('/wallet/portfolio'),
+  getPortfolio: (userId?: string) =>
+    api.get<{ success: boolean; data: { chains: PortfolioChain[] } }>('/wallet/portfolio', {
+      params: userId ? { user_id: userId } : undefined,
+    }),
 
   // Get wallets for the current user (or a specific user if tenant admin)
   getWallets: (userId?: string) =>
