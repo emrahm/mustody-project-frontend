@@ -44,6 +44,7 @@ import {
 } from '@mui/icons-material';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/contexts/AuthContext';
+import { DOC_PATHS, docsLinkProps, docsUrl } from '@/lib/docs';
 import { api } from '@/lib/api';
 import NotificationBell from './NotificationBell';
 import { useEffect } from 'react';
@@ -253,9 +254,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </Typography>
           <Typography
             component="a"
-            href={import.meta.env.VITE_DOCS_URL || 'http://localhost:3001/'}
-            target="_blank"
-            rel="noopener noreferrer"
+            href={docsUrl(DOC_PATHS.intro)}
+            {...docsLinkProps()}
             variant="caption"
             color="primary"
             sx={{ textDecoration: 'underline', display: 'block' }}
