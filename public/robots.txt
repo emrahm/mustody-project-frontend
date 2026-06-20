@@ -1,0 +1,27 @@
+# https://mustody.com
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /admin/
+Disallow: /tenant-admin/
+Disallow: /tenant-user/
+Disallow: /wallet
+Disallow: /api-keys
+Disallow: /settings
+Disallow: /profile
+Disallow: /support
+Disallow: /audit-logs
+Disallow: /contract-templates
+Disallow: /deployed-contracts
+Disallow: /messaging
+Disallow: /team
+Disallow: /tenants
+Disallow: /users
+Disallow: /roles
+Disallow: /company
+Disallow: /payment-links
+Disallow: /tenant-request
+Disallow: /invitation/
+Disallow: /auth/
+
+Sitemap: https://mustody.com/sitemap.xml

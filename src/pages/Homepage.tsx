@@ -8,6 +8,7 @@ import { motion } from "framer-motion";
 import { Logo, LogoWithText } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useTheme } from "@/contexts/ThemeContext";
+import { SITE_TAGLINE } from "@/lib/seo";
 
 export function Homepage() {
   const { user, loading, logout } = useAuth();
@@ -172,9 +173,10 @@ export function Homepage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 text-gray-900 dark:text-white transition-colors duration-300">
       <FloatingElements />
-      
+
       {/* Navigation */}
-      <nav className="relative z-50 bg-white/80 dark:bg-black/20 backdrop-blur-md border-b border-gray-200 dark:border-white/10">
+      <header>
+      <nav className="relative z-50 bg-white/80 dark:bg-black/20 backdrop-blur-md border-b border-gray-200 dark:border-white/10" aria-label="Main navigation">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <Link href="/" className="flex items-center space-x-3">
@@ -248,7 +250,9 @@ export function Homepage() {
           </div>
         </div>
       </nav>
+      </header>
 
+      <main id="main-content">
       {/* Hero Section */}
       <section className="relative pt-20 pb-32 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
@@ -479,6 +483,7 @@ export function Homepage() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
               viewport={{ once: true }}
+              id="security"
             >
               <Card className="bg-white/50 dark:bg-black/40 border-gray-200 dark:border-white/10 backdrop-blur-md hover:bg-white/70 dark:hover:bg-black/60 transition-all duration-300">
                 <CardContent className="p-8">
@@ -595,7 +600,7 @@ export function Homepage() {
       </section>
 
       {/* CTA Section */}
-      <section className="relative py-24 px-4 sm:px-6 lg:px-8">
+      <section id="pricing" className="relative py-24 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto text-center">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -628,6 +633,7 @@ export function Homepage() {
           </motion.div>
         </div>
       </section>
+      </main>
 
       {/* Footer */}
       <footer className="relative bg-gray-100 dark:bg-black/40 border-t border-gray-200 dark:border-white/10 py-16 px-4 sm:px-6 lg:px-8">
@@ -635,8 +641,9 @@ export function Homepage() {
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div>
               <LogoWithText size="md" />
-              <p className="text-gray-600 dark:text-gray-400 leading-relaxed mt-4">
-                Enterprise blockchain infrastructure for modern businesses.
+              <p className="text-sm font-medium text-blue-600 dark:text-blue-400 mt-3">{SITE_TAGLINE}</p>
+              <p className="text-gray-600 dark:text-gray-400 leading-relaxed mt-2">
+                Enterprise Blockchain-as-a-Service and MPC custody infrastructure for modern businesses.
               </p>
             </div>
             

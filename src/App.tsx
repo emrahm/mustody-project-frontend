@@ -53,10 +53,13 @@ import DeployedContractsPage from "./pages/DeployedContractsPage";
 import SupportPage from "./pages/SupportPage";
 import AdminSupportPage from "./pages/AdminSupportPage";
 import AdminSupportDetailPage from "./pages/AdminSupportDetailPage";
+import { SeoHead } from "./components/SeoHead";
 
 function Router() {
   return (
-    <Switch>
+    <>
+      <SeoHead />
+      <Switch>
       <Route path="/" component={Homepage} />
       <Route path="/landing" component={LandingPage} />
       <Route path="/login" component={LoginMUI} />
@@ -100,6 +103,7 @@ function Router() {
       <Route path="/audit-logs-old" component={AuditLogs} />
       <Route component={NotFound} />
     </Switch>
+    </>
   );
 }
 
